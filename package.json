@@ -1,0 +1,32 @@
+{
+  "name": "@code-dot-org/js-interpreter-tyrant",
+  "version": "0.0.1",
+  "description": "A test harness for running test262 ecmascript test suite against Neil Fraser's js interpreter",
+  "main": "index.js",
+  "bin": "bin/run.js",
+  "repository": "git@github.com:code-dot-org/js-interpreter-tyrant.git",
+  "author": "Paul Carduner <paul@carduner.net>",
+  "license": "Apache-2.0",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "bin",
+    "runner.js"
+  ],
+  "resolutions": {
+    "eshost": "github:pcardune/eshost#f3fa7fa",
+    "test262-compiler": "github:pcardune/test262-compiler#ffa0dff"
+  },
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "eshost": "github:pcardune/eshost#f3fa7fa",
+    "node-fetch": "^1.6.3",
+    "progress": "^1.1.8",
+    "test262-compiler": "github:pcardune/test262-compiler#ffa0dff",
+    "test262-harness": "^2.4.0",
+    "yargs": "^7.0.1"
+  },
+  "peerDependencies": {
+    "@code-dot-org/js-interpreter": "^1.0.0"
+  }
+}
