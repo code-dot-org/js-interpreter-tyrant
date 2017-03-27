@@ -1,6 +1,6 @@
 {
   "name": "@code-dot-org/js-interpreter-tyrant",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A test harness for running test262 ecmascript test suite against Neil Fraser's js interpreter",
   "main": "index.js",
   "bin": "bin/run.js",
