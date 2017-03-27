@@ -412,7 +412,7 @@ function printAndCheckResultsDiff(results) {
     const printTest = (color, {oldTest, newTest}, index) => {
       console.log(color(chalk.bold(`  ${index}. ${getTestDescription(newTest)}`)));
       console.log(chalk.gray(`     ${newTest.file}`));
-      console.log(`     - ${oldTest.result.message}`);
+      oldTest && console.log(`     - ${oldTest.result.message}`);
       console.log(`     + ${newTest.result.message}`);
     }
     console.log('\nNew:')
