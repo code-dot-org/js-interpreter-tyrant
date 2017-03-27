@@ -60,3 +60,4 @@ Once you have some saved results, you can make changes to the interpreter and se
 | `--input [FILE]` | `-i` | Location of the test results file. When used in conjection with `--run`, test results will be stored at this location. |
 | `--interpreter` | | The path to the interpreter module to use. Defaults to `@code-dot-rg/js-interpreter/interpreter.js`
 | `--circleBuild [BUILD-ID]` | | Downloads and merges build results for the `code-dot-org/JS-Interpreter` repo |
+| `--hostPath [PATH]` | | Path to the `js-interpreter` script. Defaults to the `node_modules/js-interpreter/bin/run.js` |

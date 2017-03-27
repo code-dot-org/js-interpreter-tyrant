@@ -61,6 +61,9 @@ const argv = yargs
   .nargs('interpreter', 1)
   .describe('interpreter', 'path to interpreter module to use')
 
+  .describe('hostPath', 'path to the js-interpreter run script')
+  .nargs('hostPath', 1)
+
   .help('h')
   .alias('h', 'help')
   .argv;
@@ -172,7 +175,7 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         threads: argv.threads,
         timeout: 60000,
         hostType: 'js-interpreter',
-        hostPath: path.resolve(__dirname, '../../js-interpreter/bin/run.js'),
+        hostPath: argv.hostPath || path.resolve(__dirname, '../../js-interpreter/bin/run.js'),
         hostArgs: argv.interpreter ? ['--interpreter', argv.interpreter] : undefined,
         test262Dir: path.resolve(argv.root, 'test262'),
         reporter: (results) => {
