@@ -319,7 +319,7 @@ function readResultsFromFile(filename) {
 }
 
 function getKeyForTest(test) {
-  return [test.file, test.attrs.description].join(' ');
+  return [test.file.split('test262')[1], test.attrs.description].join(' ');
 }
 
 function getResultsByKey(results) {
