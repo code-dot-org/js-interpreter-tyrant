@@ -16,7 +16,7 @@ const argv = yargs
   .alias('d', 'diff')
   .describe(
     'd',
-    'diff against existing test results. Returns exit code 1 if there are changes.',
+    'diff against existing test results. Returns exit code 1 if there are changes.'
   )
   .boolean('d')
   .alias('r', 'run')
@@ -38,7 +38,7 @@ const argv = yargs
   .boolean('v')
   .describe(
     'root',
-    'Root directory where test262 suite and test results are kept',
+    'Root directory where test262 suite and test results are kept'
   )
   .default('root', 'tyrant')
   .describe('compiledOut', 'Directory to dump compiled test files to')
@@ -64,7 +64,7 @@ argv.savedResults = argv.savedResults ||
 const RESULTS_FILE = path.resolve(argv.input);
 const VERBOSE_RESULTS_FILE = path.resolve(
   argv.root,
-  'test-results-new.verbose.json',
+  'test-results-new.verbose.json'
 );
 const TEST_GLOBS = argv._.length > 0
   ? argv._
@@ -146,12 +146,12 @@ function runTests(outputFilePath, verboseOutputFilePath) {
           .sort()
           .filter(
             (path, index) =>
-              index % parseInt(argv.splitInto) === parseInt(argv.splitIndex),
+              index % parseInt(argv.splitInto) === parseInt(argv.splitIndex)
           );
         globs = paths;
       }
       console.log(
-        `running around ${paths.length * 2} tests with ${argv.threads} threads...`,
+        `running around ${paths.length * 2} tests with ${argv.threads} threads...`
       );
 
       const bar = new ProgressBar(
@@ -159,7 +159,7 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         {
           total: paths.length * 2, // each file gets run in strict and unstrict mode
           width: 50,
-        },
+        }
       );
 
       let count = 1;
@@ -252,13 +252,13 @@ function runTests(outputFilePath, verboseOutputFilePath) {
                   result: test.result,
                 },
                 null,
-                2,
-              ) + '\n',
+                2
+              ) + '\n'
             );
             if (verboseOutputFile) {
               fs.appendFileSync(
                 verboseOutputFile,
-                JSON.stringify(test, null, 2) + '\n',
+                JSON.stringify(test, null, 2) + '\n'
               );
             }
 
@@ -286,7 +286,7 @@ function runTests(outputFilePath, verboseOutputFilePath) {
                   fixed: numFixed,
                   new: numNew,
                   minutes: eta,
-                },
+                }
               );
             }
           });
@@ -309,7 +309,7 @@ function downloadCircleResults() {
     .then(artifacts =>
       artifacts
         .filter(
-          a => a.pretty_path === '$CIRCLE_ARTIFACTS/test-results-new.json',
+          a => a.pretty_path === '$CIRCLE_ARTIFACTS/test-results-new.json'
         )
         .map(a => a.url))
     .then(resultFileUrls => {
@@ -322,7 +322,7 @@ function downloadCircleResults() {
           fetch(url).then(res => {
             bar.tick();
             return res.json();
-          })),
+          }))
       );
     })
     .then(results => {
@@ -379,7 +379,7 @@ function printResultsSummary(results) {
   TEST_TYPES.forEach(type => {
     if (total[type]) {
       console.log(
-        `  ${type}: ${passed[type]}/${total[type]} (${percent[type]}%) passed`,
+        `  ${type}: ${passed[type]}/${total[type]} (${percent[type]}%) passed`
       );
     }
   });
@@ -428,7 +428,7 @@ function printAndCheckResultsDiff(results) {
   if (argv.verbose) {
     const printTest = (color, {oldTest, newTest}, index) => {
       console.log(
-        color(chalk.bold(`  ${index}. ${getTestDescription(newTest)}`)),
+        color(chalk.bold(`  ${index}. ${getTestDescription(newTest)}`))
       );
       console.log(chalk.gray(`     ${newTest.file}`));
       oldTest && console.log(`     - ${oldTest.result.message}`);
@@ -487,8 +487,8 @@ function processTestResults() {
 const OLD_RESULTS_BY_KEY = argv.diff
   ? getResultsByKey(
       readResultsFromFile(
-        typeof argv.diff === 'string' ? argv.diff : argv.savedResults,
-      ),
+        typeof argv.diff === 'string' ? argv.diff : argv.savedResults
+      )
     )
   : {};
 
