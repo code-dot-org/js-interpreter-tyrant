@@ -28,5 +28,8 @@
   },
   "peerDependencies": {
     "@code-dot-org/js-interpreter": "^1.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^3.19.0"
   }
 }
