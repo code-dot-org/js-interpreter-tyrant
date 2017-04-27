@@ -48,6 +48,7 @@ Once you have some saved results, you can make changes to the interpreter and se
 | ------ | ----- | ----------- |
 | `--diff` | `-d` | Compare test results to previously saved results |
 | `--run` | `-r` | Generate new test results |
+| `--rerun` | | Rerun tests that resulted in a regression. Good for fixing timeout failures |
 | `--splitInto N` | | Used in conjunction with `--run`, only run a portion (1/`N`) of the tests |
 | `--splitIndex N` | | Used in conjunction with `--run` and `--splitInto`, specify which portion of the (1/`N`) tests to run |
 | `--save` | `-s` | Save the results of the current or previously recorded test run |
