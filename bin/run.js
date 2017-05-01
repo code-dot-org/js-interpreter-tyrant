@@ -329,6 +329,9 @@ function downloadCircleResults() {
     })
     .then(results => {
       const allResults = results.reduce((acc, val) => acc.concat(val), []);
+      allResults.sort(
+        (a, b) => a.file < b.file ? -1 : a.file === b.file ? 0 : 1
+      );
       fs.writeFileSync(argv.input, JSON.stringify(allResults, null, 2));
     });
 }
