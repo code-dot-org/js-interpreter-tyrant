@@ -476,7 +476,7 @@ function printAndCheckResultsDiff(results) {
 
   for (let i = 0; i < TEST_TYPES.length; i++) {
     const type = TEST_TYPES[i];
-    if (numRegressions[type] || numFixes[type]) {
+    if (numRegressions[type]) {
       return true;
     }
   }
