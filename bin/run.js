@@ -312,9 +312,7 @@ function downloadCircleResults() {
     .then(res => res.json())
     .then(artifacts =>
       artifacts
-        .filter(
-          a => a.pretty_path === '$CIRCLE_ARTIFACTS/test-results-new.json'
-        )
+        .filter(a => a.pretty_path.endsWith('test-results-new.json'))
         .map(a => a.url))
     .then(resultFileUrls => {
       const bar = new ProgressBar('[:bar] :current/:total', {
