@@ -42,13 +42,22 @@ js-interpreter-tyrant --diff
 
 Once you have some saved results, you can make changes to the interpreter and see what the impact those changes had by rerunning the tests and then comparing them with the `--diff` option. This will give you a summary of fixes and regressions compared to the previous test run. For a detailed listing of which specific tests were fixed/regressed, you can add the `--verbose` option.
 
+### Running specific tests
+
+```
+js-interpreter-tyrant --run tyrant/test262/test/language/literals/regexp/S7.8.5_A1.4_T2.js
+```
+
+You can pass any number of positional arguments to `js-interpreter-tyrant` which
+will be interpreted as test files to run. Otherwise all tests will be run.
+
 ## All Options
 
 | Option | Alias | Description |
 | ------ | ----- | ----------- |
 | `--diff` | `-d` | Compare test results to previously saved results |
 | `--run` | `-r` | Generate new test results |
-| `--rerun` | | Rerun tests that resulted in a regression. Good for fixing timeout failures |
+| `--rerun` | | Rerun tests that resulted in a regression. Good for fixing timeout failures. If individiual test paths are also passed in, then only those tests will be run, and the test results will be merged into the existing results file  |
 | `--splitInto N` | | Used in conjunction with `--run`, only run a portion (1/`N`) of the tests |
 | `--splitIndex N` | | Used in conjunction with `--run` and `--splitInto`, specify which portion of the (1/`N`) tests to run |
 | `--save` | `-s` | Save the results of the current or previously recorded test run |

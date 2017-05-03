@@ -534,8 +534,10 @@ if (argv.run) {
 } else if (argv.rerun) {
   const oldResults = readResultsFromFile(RESULTS_FILE);
   const {testsThatDiffer} = getResultsDiff(oldResults);
-  argv._ = testsThatDiffer.regressions.map(({newTest}) =>
-    getNormalizedTestFileName(newTest.file));
+  if (argv._.length === 0) {
+    argv._ = testsThatDiffer.regressions.map(({newTest}) =>
+      getNormalizedTestFileName(newTest.file));
+  }
   if (argv._.length > 0) {
     execSync(`cp ${RESULTS_FILE} ${RESULTS_FILE}.old.json`);
     runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE).then(processTestResults);
