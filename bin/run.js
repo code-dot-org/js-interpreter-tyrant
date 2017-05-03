@@ -499,7 +499,7 @@ function processTestResults() {
     );
     const newResultsByKey = getResultsByKey(results);
     Object.assign(allResults, newResultsByKey);
-    results = Object.values(allResults);
+    results = Object.keys(allResults).map(key => allResults[key]);
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));
   }
 

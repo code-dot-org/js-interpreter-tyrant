@@ -7,6 +7,9 @@
   "repository": "git@github.com:code-dot-org/js-interpreter-tyrant.git",
   "author": "Paul Carduner <paul@carduner.net>",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=6.9.0"
+  },
   "files": [
     "LICENSE",
     "README.md",
