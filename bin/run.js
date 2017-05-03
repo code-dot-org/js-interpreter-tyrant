@@ -340,6 +340,10 @@ function readResultsFromFile(filename) {
   return JSON.parse(fs.readFileSync(path.resolve(filename)));
 }
 
+function getNormalizedTestFileName(filename) {
+  return path.resolve(argv.root, 'test262' + filename.split('test262')[1]);
+}
+
 function getKeyForTest(test) {
   return [test.file.split('test262')[1], test.attrs.description].join(' ');
 }
@@ -530,7 +534,8 @@ if (argv.run) {
 } else if (argv.rerun) {
   const oldResults = readResultsFromFile(RESULTS_FILE);
   const {testsThatDiffer} = getResultsDiff(oldResults);
-  argv._ = testsThatDiffer.regressions.map(({newTest}) => newTest.file);
+  argv._ = testsThatDiffer.regressions.map(({newTest}) =>
+    getNormalizedTestFileName(newTest.file));
   if (argv._.length > 0) {
     execSync(`cp ${RESULTS_FILE} ${RESULTS_FILE}.old.json`);
     runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE).then(processTestResults);
