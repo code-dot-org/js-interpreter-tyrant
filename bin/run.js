@@ -363,7 +363,7 @@ function getTestType(test) {
 }
 
 function getTestDescription(test) {
-  return (test.attrs.description || test.file).trim().replace('\n', ' ');
+  return `[${getTestType(test)}] ` + (test.attrs.description || test.file).trim().replace('\n', ' ');
 }
 
 function printResultsSummary(results) {
