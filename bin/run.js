@@ -174,6 +174,35 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         verboseOutputFile = fs.openSync(verboseOutputFilePath, 'w');
       }
       let startTime;
+      let running = false;
+      fs.appendFileSync(outputFile, '[\n');
+      if (verboseOutputFile) {
+        fs.appendFileSync(verboseOutputFile, '[\n');
+      }
+      running = true;
+
+      function finishWritingOutput() {
+        fs.appendFileSync(outputFile, ']\n');
+        fs.closeSync(outputFile);
+        if (verboseOutputFile) {
+          fs.appendFileSync(verboseOutputFile, ']\n');
+          fs.closeSync(verboseOutputFile);
+        }
+      }
+      process.on('SIGINT', function() {
+        if (running) {
+          console.log(
+            chalk.bold(
+              chalk.red(
+                '\n\nStopped before all tests were run. Results are not complete!'
+              )
+            )
+          );
+          finishWritingOutput();
+        }
+        processTestResults();
+        process.exit(1);
+      });
       runner.run({
         compiledFilesDir: argv.compiledOut && path.resolve(argv.compiledOut),
         threads: argv.threads,
@@ -189,18 +218,12 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         reporter: results => {
           results.on('start', function() {
             startTime = new Date().getTime();
-            fs.appendFileSync(outputFile, '[\n');
-            if (verboseOutputFile) {
-              fs.appendFileSync(verboseOutputFile, '[\n');
-            }
           });
           results.on('end', function() {
-            fs.appendFileSync(outputFile, ']\n');
-            fs.closeSync(outputFile);
-            if (verboseOutputFile) {
-              fs.appendFileSync(verboseOutputFile, ']\n');
-              fs.closeSync(verboseOutputFile);
+            if (running) {
+              finishWritingOutput();
             }
+            running = false;
             console.log(`\nfinished running ${count} tests`);
             resolve();
           });
