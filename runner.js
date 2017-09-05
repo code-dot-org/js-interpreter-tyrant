@@ -48,7 +48,7 @@ module.exports = {
       argv.hostArgs,
       argv.hostPath,
       {
-        timeout: argv.timeout
+        timeout: argv.timeout,
       }
     );
     const paths = globber(argv.globs);
@@ -59,8 +59,10 @@ module.exports = {
     const tests = files.map(compileFile);
     const scenarios = tests.flatMap(scenariosForTest);
     const pairs = Rx.Observable.zip(pool, scenarios);
-    const rawResults = pairs.flatMap(pool.runTest).tapOnCompleted(() => pool.destroy());;
-    const results = rawResults.map(function (test) {
+    const rawResults = pairs
+      .flatMap(pool.runTest)
+      .tapOnCompleted(() => pool.destroy());
+    const results = rawResults.map(function(test) {
       test.result = validator(test);
       return test;
     });
@@ -68,31 +70,38 @@ module.exports = {
     argv.reporter(resultEmitter);
 
     function pathToTestFile(path) {
-      return { file: path, contents: fs.readFileSync(path, 'utf-8')};
+      return {file: path, contents: fs.readFileSync(path, 'utf-8')};
     }
 
     const endFrontmatterRe = /---\*\/\r?\n/g;
     function compileFile(test) {
       const match = endFrontmatterRe.exec(test.contents);
       if (match) {
-        test.contents = test.contents.slice(0, endFrontmatterRe.lastIndex)
-                      + preludeContents
-                      + test.contents.slice(endFrontmatterRe.lastIndex);
+        test.contents =
+          test.contents.slice(0, endFrontmatterRe.lastIndex) +
+          preludeContents +
+          test.contents.slice(endFrontmatterRe.lastIndex);
       } else {
         test.contents = preludeContents + test.contents;
       }
-      const compiledTest = compile(test, { test262Dir: test262Dir, includesDir: includesDir });
+      const compiledTest = compile(test, {
+        test262Dir: test262Dir,
+        includesDir: includesDir,
+      });
       if (argv.compiledFilesDir) {
-        const outPath = path.join(argv.compiledFilesDir, test.file.replace(test262Dir, ''));
+        const outPath = path.join(
+          argv.compiledFilesDir,
+          test.file.replace(test262Dir, '')
+        );
         outPath.split('/').reduce(function(prev, curr, i) {
           if (prev && !fs.existsSync(prev)) {
             fs.mkdirSync(prev);
           }
           return prev + '/' + curr;
         });
-        fs.writeFileSync(outPath, compiledTest.contents)
+        fs.writeFileSync(outPath, compiledTest.contents);
       }
       return compiledTest;
     }
-  }
+  },
 };

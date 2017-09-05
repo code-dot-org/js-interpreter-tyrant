@@ -59,8 +59,8 @@ const argv = yargs
   .alias('h', 'help').argv;
 
 argv.input = argv.input || path.resolve(argv.root, 'test-results-new.json');
-argv.savedResults = argv.savedResults ||
-  path.resolve(argv.root, 'test-results.json');
+argv.savedResults =
+  argv.savedResults || path.resolve(argv.root, 'test-results.json');
 
 const RESULTS_FILE = path.resolve(argv.input);
 const VERBOSE_RESULTS_FILE = path.resolve(
@@ -135,7 +135,7 @@ function saveResults(results) {
     attrs: test.attrs,
     result: test.result,
   }));
-  results.sort((a, b) => a.file < b.file ? -1 : a.file === b.file ? 0 : 1);
+  results.sort((a, b) => (a.file < b.file ? -1 : a.file === b.file ? 0 : 1));
   fs.writeFileSync(argv.savedResults, JSON.stringify(results, null, 2));
 }
 
@@ -155,7 +155,8 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         globs = paths;
       }
       console.log(
-        `running around ${paths.length * 2} tests with ${argv.threads} threads...`
+        `running around ${paths.length *
+          2} tests with ${argv.threads} threads...`
       );
 
       const bar = new ProgressBar(
@@ -178,7 +179,8 @@ function runTests(outputFilePath, verboseOutputFilePath) {
         threads: argv.threads,
         timeout: 60000,
         hostType: 'js-interpreter',
-        hostPath: argv.hostPath ||
+        hostPath:
+          argv.hostPath ||
           path.resolve(__dirname, '../../js-interpreter/bin/run.js'),
         hostArgs: argv.interpreter
           ? ['--interpreter', argv.interpreter]
@@ -268,7 +270,8 @@ function runTests(outputFilePath, verboseOutputFilePath) {
 
             count++;
             if (argv.progress) {
-              let secondsRemaining = (new Date().getTime() - startTime) /
+              let secondsRemaining =
+                (new Date().getTime() - startTime) /
                 bar.curr *
                 (bar.total - bar.curr) /
                 1000;
@@ -281,8 +284,8 @@ function runTests(outputFilePath, verboseOutputFilePath) {
               bar.tick(
                 // tick twice for tests that don't run in both strict and non-strict modes
                 !test.attrs.flags.onlyStrict &&
-                  !test.attrs.flags.noStrict &&
-                  !test.attrs.flags.raw
+                !test.attrs.flags.noStrict &&
+                !test.attrs.flags.raw
                   ? 1
                   : 2,
                 {
@@ -313,7 +316,8 @@ function downloadCircleResults() {
     .then(artifacts =>
       artifacts
         .filter(a => a.pretty_path.endsWith('test-results-new.json'))
-        .map(a => a.url))
+        .map(a => a.url)
+    )
     .then(resultFileUrls => {
       const bar = new ProgressBar('[:bar] :current/:total', {
         curr: 0,
@@ -324,13 +328,14 @@ function downloadCircleResults() {
           fetch(url).then(res => {
             bar.tick();
             return res.json();
-          }))
+          })
+        )
       );
     })
     .then(results => {
       const allResults = results.reduce((acc, val) => acc.concat(val), []);
       allResults.sort(
-        (a, b) => a.file < b.file ? -1 : a.file === b.file ? 0 : 1
+        (a, b) => (a.file < b.file ? -1 : a.file === b.file ? 0 : 1)
       );
       fs.writeFileSync(argv.input, JSON.stringify(allResults, null, 2));
     });
@@ -350,7 +355,7 @@ function getKeyForTest(test) {
 
 function getResultsByKey(results) {
   const byKey = {};
-  results.forEach(test => byKey[getKeyForTest(test)] = test);
+  results.forEach(test => (byKey[getKeyForTest(test)] = test));
   return byKey;
 }
 
@@ -363,7 +368,10 @@ function getTestType(test) {
 }
 
 function getTestDescription(test) {
-  return `[${getTestType(test)}] ` + (test.attrs.description || test.file).trim().replace('\n', ' ');
+  return (
+    `[${getTestType(test)}] ` +
+    (test.attrs.description || test.file).trim().replace('\n', ' ')
+  );
 }
 
 function printResultsSummary(results) {
@@ -536,7 +544,8 @@ if (argv.run) {
   const {testsThatDiffer} = getResultsDiff(oldResults);
   if (argv._.length === 0) {
     argv._ = testsThatDiffer.regressions.map(({newTest}) =>
-      getNormalizedTestFileName(newTest.file));
+      getNormalizedTestFileName(newTest.file)
+    );
   }
   if (argv._.length > 0) {
     execSync(`cp ${RESULTS_FILE} ${RESULTS_FILE}.old.json`);
