@@ -55,6 +55,8 @@ const argv = yargs
   .nargs('hostPath', 1)
   .describe('rerun', 'reruns tests that have regressed')
   .boolean('rerun')
+  .describe('retries', 'number of times to retry regressed tests')
+  .nargs('retries', 1)
   .help('h')
   .alias('h', 'help').argv;
 
@@ -68,64 +70,68 @@ const VERBOSE_RESULTS_FILE = path.resolve(
   'test-results-new.verbose.json'
 );
 function getTestGlobs() {
-  return argv._.length > 0
-    ? argv._
-    : [
-        'test262/test/annexB/**/*.js',
-        'test262/test/harness/**/*.js',
-        'test262/test/intl402/**/*.js',
-        'test262/test/language/**/*.js',
-        'test262/test/built-ins/Array/**/*.js',
-        'test262/test/built-ins/ArrayBuffer/**/*.js',
-        'test262/test/built-ins/ArrayIteratorPrototype/**/*.js',
-        'test262/test/built-ins/AsyncFunction/**/*.js',
-        'test262/test/built-ins/Atomics/**/*.js',
-        'test262/test/built-ins/Boolean/**/*.js',
-        'test262/test/built-ins/DataView/**/*.js',
-        'test262/test/built-ins/Date/**/*.js',
-        'test262/test/built-ins/decodeURI/**/*.js',
-        'test262/test/built-ins/decodeURIComponent/**/*.js',
-        'test262/test/built-ins/encodeURI/**/*.js',
-        'test262/test/built-ins/encodeURIComponent/**/*.js',
-        'test262/test/built-ins/Error/**/*.js',
-        'test262/test/built-ins/eval/**/*.js',
-        'test262/test/built-ins/Function/**/*.js',
-        'test262/test/built-ins/GeneratorFunction/**/*.js',
-        'test262/test/built-ins/GeneratorPrototype/**/*.js',
-        'test262/test/built-ins/global/**/*.js',
-        'test262/test/built-ins/Infinity/**/*.js',
-        'test262/test/built-ins/isFinite/**/*.js',
-        'test262/test/built-ins/isNaN/**/*.js',
-        'test262/test/built-ins/IteratorPrototype/**/*.js',
-        'test262/test/built-ins/JSON/**/*.js',
-        'test262/test/built-ins/Map/**/*.js',
-        'test262/test/built-ins/MapIteratorPrototype/**/*.js',
-        'test262/test/built-ins/Math/**/*.js',
-        'test262/test/built-ins/NaN/**/*.js',
-        'test262/test/built-ins/NativeErrors/**/*.js',
-        'test262/test/built-ins/Number/**/*.js',
-        'test262/test/built-ins/Object/**/*.js',
-        'test262/test/built-ins/parseFloat/**/*.js',
-        'test262/test/built-ins/parseInt/**/*.js',
-        'test262/test/built-ins/Promise/**/*.js',
-        'test262/test/built-ins/Proxy/**/*.js',
-        'test262/test/built-ins/Reflect/**/*.js',
-        'test262/test/built-ins/RegExp/**/*.js',
-        'test262/test/built-ins/Set/**/*.js',
-        'test262/test/built-ins/SetIteratorPrototype/**/*.js',
-        'test262/test/built-ins/SharedArrayBuffer/**/*.js',
-        'test262/test/built-ins/Simd/**/*.js',
-        'test262/test/built-ins/String/**/*.js',
-        'test262/test/built-ins/StringIteratorPrototype/**/*.js',
-        'test262/test/built-ins/Symbol/**/*.js',
-        'test262/test/built-ins/ThrowTypeError/**/*.js',
-        'test262/test/built-ins/TypedArray/**/*.js',
-        // this test file currently makes the interpreter explode.
-        //  'test262/test/built-ins/TypedArrays/**/*.js',
-        'test262/test/built-ins/undefined/**/*.js',
-        'test262/test/built-ins/WeakMap/**/*.js',
-        'test262/test/built-ins/WeakSet/**/*.js',
-      ].map(t => path.resolve(argv.root, t));
+  return Array.from(
+    new Set(
+      argv._.length > 0
+        ? argv._
+        : [
+            'test262/test/annexB/**/*.js',
+            'test262/test/harness/**/*.js',
+            'test262/test/intl402/**/*.js',
+            'test262/test/language/**/*.js',
+            'test262/test/built-ins/Array/**/*.js',
+            'test262/test/built-ins/ArrayBuffer/**/*.js',
+            'test262/test/built-ins/ArrayIteratorPrototype/**/*.js',
+            'test262/test/built-ins/AsyncFunction/**/*.js',
+            'test262/test/built-ins/Atomics/**/*.js',
+            'test262/test/built-ins/Boolean/**/*.js',
+            'test262/test/built-ins/DataView/**/*.js',
+            'test262/test/built-ins/Date/**/*.js',
+            'test262/test/built-ins/decodeURI/**/*.js',
+            'test262/test/built-ins/decodeURIComponent/**/*.js',
+            'test262/test/built-ins/encodeURI/**/*.js',
+            'test262/test/built-ins/encodeURIComponent/**/*.js',
+            'test262/test/built-ins/Error/**/*.js',
+            'test262/test/built-ins/eval/**/*.js',
+            'test262/test/built-ins/Function/**/*.js',
+            'test262/test/built-ins/GeneratorFunction/**/*.js',
+            'test262/test/built-ins/GeneratorPrototype/**/*.js',
+            'test262/test/built-ins/global/**/*.js',
+            'test262/test/built-ins/Infinity/**/*.js',
+            'test262/test/built-ins/isFinite/**/*.js',
+            'test262/test/built-ins/isNaN/**/*.js',
+            'test262/test/built-ins/IteratorPrototype/**/*.js',
+            'test262/test/built-ins/JSON/**/*.js',
+            'test262/test/built-ins/Map/**/*.js',
+            'test262/test/built-ins/MapIteratorPrototype/**/*.js',
+            'test262/test/built-ins/Math/**/*.js',
+            'test262/test/built-ins/NaN/**/*.js',
+            'test262/test/built-ins/NativeErrors/**/*.js',
+            'test262/test/built-ins/Number/**/*.js',
+            'test262/test/built-ins/Object/**/*.js',
+            'test262/test/built-ins/parseFloat/**/*.js',
+            'test262/test/built-ins/parseInt/**/*.js',
+            'test262/test/built-ins/Promise/**/*.js',
+            'test262/test/built-ins/Proxy/**/*.js',
+            'test262/test/built-ins/Reflect/**/*.js',
+            'test262/test/built-ins/RegExp/**/*.js',
+            'test262/test/built-ins/Set/**/*.js',
+            'test262/test/built-ins/SetIteratorPrototype/**/*.js',
+            'test262/test/built-ins/SharedArrayBuffer/**/*.js',
+            'test262/test/built-ins/Simd/**/*.js',
+            'test262/test/built-ins/String/**/*.js',
+            'test262/test/built-ins/StringIteratorPrototype/**/*.js',
+            'test262/test/built-ins/Symbol/**/*.js',
+            'test262/test/built-ins/ThrowTypeError/**/*.js',
+            'test262/test/built-ins/TypedArray/**/*.js',
+            // this test file currently makes the interpreter explode.
+            //  'test262/test/built-ins/TypedArrays/**/*.js',
+            'test262/test/built-ins/undefined/**/*.js',
+            'test262/test/built-ins/WeakMap/**/*.js',
+            'test262/test/built-ins/WeakSet/**/*.js',
+          ].map(t => path.resolve(argv.root, t))
+    )
+  );
 }
 
 function saveResults(results) {
@@ -546,7 +552,7 @@ function processTestResults() {
   }
 }
 
-if (argv.rerun) {
+if (argv.rerun || argv.retries) {
   argv.diff = true;
 }
 
@@ -558,24 +564,56 @@ const OLD_RESULTS_BY_KEY = argv.diff
     )
   : {};
 
-if (argv.run) {
-  runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE).then(processTestResults);
-} else if (argv.circleBuild) {
-  downloadCircleResults().then(processTestResults);
-} else if (argv.rerun) {
-  const oldResults = readResultsFromFile(RESULTS_FILE);
-  const {testsThatDiffer} = getResultsDiff(oldResults);
+function rerun() {
+  const {testsThatDiffer} = getResultsDiff(readResultsFromFile(RESULTS_FILE));
   if (argv._.length === 0) {
     argv._ = testsThatDiffer.regressions.map(({newTest}) =>
       getNormalizedTestFileName(newTest.file)
     );
+    console.log('found', argv._.length, 'regressions to rerun');
+  } else {
+    const possibleFiles = new Set(argv._.map(fn => path.resolve(fn)));
+    argv._ = testsThatDiffer.regressions
+      .map(({newTest}) => getNormalizedTestFileName(newTest.file))
+      .filter(fn => possibleFiles.has(fn));
   }
   if (argv._.length > 0) {
     execSync(`cp ${RESULTS_FILE} ${RESULTS_FILE}.old.json`);
-    runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE).then(processTestResults);
+    return runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE);
   } else {
     console.log('nothing to rerun, there were no regressions');
   }
+  return Promise.resolve();
+}
+
+let numTries = 1;
+function postRun() {
+  if (argv.retries) {
+    let results = readResultsFromFile(RESULTS_FILE);
+    let {testsThatDiffer} = getResultsDiff(results);
+    const numTriesLeft = argv.retries - numTries;
+    if (testsThatDiffer.regressions.length > 0 && numTriesLeft > 0) {
+      console.log(
+        `got ${testsThatDiffer.regressions
+          .length} regressions. Retrying them ${numTriesLeft > 1
+          ? 'up to '
+          : ''}${numTriesLeft} ${numTriesLeft > 1
+          ? 'more times...'
+          : 'more time...'}`
+      );
+      numTries++;
+      return rerun().then(postRun);
+    }
+  }
+  processTestResults();
+}
+
+if (argv.run) {
+  runTests(RESULTS_FILE, VERBOSE_RESULTS_FILE).then(postRun);
+} else if (argv.circleBuild) {
+  downloadCircleResults().then(processTestResults);
+} else if (argv.rerun) {
+  rerun().then(processTestResults);
 } else {
   processTestResults();
 }

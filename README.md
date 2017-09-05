@@ -58,6 +58,7 @@ will be interpreted as test files to run. Otherwise all tests will be run.
 | `--diff` | `-d` | Compare test results to previously saved results |
 | `--run` | `-r` | Generate new test results |
 | `--rerun` | | Rerun tests that resulted in a regression. Good for fixing timeout failures. If individiual test paths are also passed in, then only those tests will be run, and the test results will be merged into the existing results file  |
+| `--retries N` | | Automatically retry regressed tests up to N times |
 | `--splitInto N` | | Used in conjunction with `--run`, only run a portion (1/`N`) of the tests |
 | `--splitIndex N` | | Used in conjunction with `--run` and `--splitInto`, specify which portion of the (1/`N`) tests to run |
 | `--save` | `-s` | Save the results of the current or previously recorded test run |
