@@ -8,6 +8,7 @@ import chalk from 'chalk';
 import globber from 'test262-harness/lib/globber.js';
 import ProgressBar from 'progress';
 import runner from './runner';
+import {Events} from './constants';
 
 const TEST_TYPES = ['es5', 'es6', 'es', 'other'];
 
@@ -34,6 +35,7 @@ const ARGS = yargs
   .nargs('t', 1)
   .default('t', os.cpus().length)
   .describe('progress', 'display a progress bar')
+  .boolean('progress')
   .alias('v', 'verbose')
   .boolean('v')
   .describe(
@@ -58,6 +60,7 @@ const ARGS = yargs
   .boolean('rerun')
   .describe('retries', 'number of times to retry regressed tests')
   .nargs('retries', 1)
+  .boolean('noExit', "Don't quit with a non-zero exit code")
   .help('h')
   .alias('h', 'help');
 
@@ -97,10 +100,31 @@ export default class Tyrant {
           )
         )
       : {};
-    console.log('done constructing');
+  }
+
+  setEventCallback(cb) {
+    this.onEvent = cb;
+    return this;
+  }
+
+  emit(event, data) {
+    if (this.onEvent) {
+      this.onEvent(event, data);
+    }
+  }
+
+  log(...args) {
+    console.log(...args);
+    this.emit(Events.LOG, {message: args.join(' ')});
+  }
+
+  write(...args) {
+    process.stdout.write(...args);
+    this.emit(Events.WRITE, {message: args.join(' ')});
   }
 
   execute = () => {
+    this.emit(Events.STARTED_EXECUTION);
     if (this.argv.run) {
       this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE).then(
         this.postRun
@@ -122,7 +146,7 @@ export default class Tyrant {
       this.argv._ = testsThatDiffer.regressions.map(({newTest}) =>
         this.getNormalizedTestFileName(newTest.file)
       );
-      console.log('found', this.argv._.length, 'regressions to rerun');
+      this.log('found', this.argv._.length, 'regressions to rerun');
     } else {
       const possibleFiles = new Set(this.argv._.map(fn => path.resolve(fn)));
       this.argv._ = testsThatDiffer.regressions
@@ -133,7 +157,7 @@ export default class Tyrant {
       execSync(`cp ${this.RESULTS_FILE} ${this.RESULTS_FILE}.old.json`);
       return this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
     } else {
-      console.log('nothing to rerun, there were no regressions');
+      this.log('nothing to rerun, there were no regressions');
     }
     return Promise.resolve();
   };
@@ -144,7 +168,7 @@ export default class Tyrant {
       let {testsThatDiffer} = this.getResultsDiff(results);
       const numTriesLeft = this.argv.retries - this.numTries;
       if (testsThatDiffer.regressions.length > 0 && numTriesLeft > 0) {
-        console.log(
+        this.log(
           `got ${testsThatDiffer.regressions
             .length} regressions. Retrying them ${numTriesLeft > 1
             ? 'up to '
@@ -162,7 +186,7 @@ export default class Tyrant {
   processTestResults = () => {
     let results = readResultsFromFile(this.RESULTS_FILE);
     if (this.argv.rerun) {
-      console.log('merging results from rerun:');
+      this.log('merging results from rerun:');
       this.printAndCheckResultsDiff(results);
       // this was a rerun, so merge the old and new results together
       const allResults = this.getResultsByKey(
@@ -187,7 +211,8 @@ export default class Tyrant {
         JSON.stringify(this.getResultsDiff(results))
       );
     }
-    if (hadRegressions) {
+    this.emit(Events.FINISHED_EXECUTION, {hadRegressions});
+    if (hadRegressions && !this.argv.noExit) {
       process.exit(1);
     }
   };
@@ -202,36 +227,36 @@ export default class Tyrant {
     } = this.getResultsDiff(results);
     if (this.argv.verbose) {
       const printTest = (color, {oldTest, newTest}, index) => {
-        console.log(
+        this.log(
           color(chalk.bold(`  ${index}. ${this.getTestDescription(newTest)}`))
         );
-        console.log(chalk.gray(`     ${newTest.file}`));
-        oldTest && console.log(`     - ${oldTest.result.message}`);
-        console.log(`     + ${newTest.result.message}`);
+        this.log(chalk.gray(`     ${newTest.file}`));
+        oldTest && this.log(`     - ${oldTest.result.message}`);
+        this.log(`     + ${newTest.result.message}`);
       };
-      console.log('\nNew:');
+      this.log('\nNew:');
       testsThatDiffer.new.forEach(printTest.bind(null, chalk.green));
-      console.log('Fixes:');
+      this.log('Fixes:');
       testsThatDiffer.fixes.forEach(printTest.bind(null, chalk.green));
-      console.log('\nRegressions:');
+      this.log('\nRegressions:');
       testsThatDiffer.regressions.forEach(printTest.bind(null, chalk.red));
     }
-    console.log('New:');
+    this.log('New:');
     TEST_TYPES.forEach(type => {
       if (total[type]) {
-        console.log(`  ${type}: ${numNew[type]}/${total[type]}`);
+        this.log(`  ${type}: ${numNew[type]}/${total[type]}`);
       }
     });
-    console.log('Fixes:');
+    this.log('Fixes:');
     TEST_TYPES.forEach(type => {
       if (total[type]) {
-        console.log(`  ${type}: ${numFixes[type]}/${total[type]}`);
+        this.log(`  ${type}: ${numFixes[type]}/${total[type]}`);
       }
     });
-    console.log('Regressions:');
+    this.log('Regressions:');
     TEST_TYPES.forEach(type => {
       if (total[type]) {
-        console.log(`  ${type}: ${numRegressions[type]}/${total[type]}`);
+        this.log(`  ${type}: ${numRegressions[type]}/${total[type]}`);
       }
     });
 
@@ -292,10 +317,10 @@ export default class Tyrant {
       percent[type] = Math.floor(passed[type] / total[type] * 100);
     });
 
-    console.log('Results:');
+    this.log('Results:');
     TEST_TYPES.forEach(type => {
       if (total[type]) {
-        console.log(
+        this.log(
           `  ${type}: ${passed[type]}/${total[type]} (${percent[type]}%) passed`
         );
       }
@@ -345,7 +370,7 @@ export default class Tyrant {
   };
 
   downloadCircleResults = () => {
-    console.log('downloading test results from circle ci...');
+    this.log('downloading test results from circle ci...');
     const VCS_TYPE = 'github';
     const USERNAME = 'code-dot-org';
     const PROJECT = 'JS-Interpreter';
@@ -398,7 +423,7 @@ export default class Tyrant {
             );
           globs = paths;
         }
-        console.log(
+        this.log(
           `running around ${paths.length * 2} tests with ${this.argv
             .threads} threads...`
         );
@@ -435,7 +460,7 @@ export default class Tyrant {
         };
         process.on('SIGINT', () => {
           if (running) {
-            console.log(
+            this.log(
               chalk.bold(
                 chalk.red(
                   '\n\nStopped before all tests were run. Results are not complete!'
@@ -447,6 +472,7 @@ export default class Tyrant {
           this.processTestResults();
           process.exit(1);
         });
+        this.emit(Events.STARTED_RUNNING, {numTests: paths.length * 2});
         runner.run({
           compiledFilesDir:
             this.argv.compiledOut && path.resolve(this.argv.compiledOut),
@@ -469,7 +495,7 @@ export default class Tyrant {
                 finishWritingOutput();
               }
               running = false;
-              console.log(`\nfinished running ${count} tests`);
+              this.log(`${'\n'}finished running ${count} tests`);
               resolve();
             });
             let numRegressed = 0;
@@ -483,7 +509,7 @@ export default class Tyrant {
               const description = this.getTestDescription(test);
               const write = (...args) => {
                 if (!this.argv.progress) {
-                  process.stdout.write(...args);
+                  this.write(...args);
                 }
               };
               if (this.argv.diff) {
@@ -563,6 +589,12 @@ export default class Tyrant {
                     minutes: eta,
                   }
                 );
+                this.emit(Events.TICK, {
+                  regressed: numRegressed,
+                  fixed: numFixed,
+                  new: numNew,
+                  minutes: eta,
+                });
               }
             });
           },
@@ -573,7 +605,7 @@ export default class Tyrant {
   };
 
   saveResults = results => {
-    console.log('Saving results for future comparison...');
+    this.log('Saving results for future comparison...');
     results = results.map(test => ({
       file: test.file,
       attrs: test.attrs,
@@ -650,6 +682,5 @@ export default class Tyrant {
 }
 
 function readResultsFromFile(filename) {
-  console.log('opening', path.resolve(filename));
   return JSON.parse(fs.readFileSync(path.resolve(filename)));
 }
