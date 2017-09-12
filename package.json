@@ -1,0 +1,21 @@
+{
+  "name": "@code-dot-org/js-interpreter-tools",
+  "version": "0.0.1",
+  "description": "Various tools for working with and developing the js interpreter",
+  "main": "index.js",
+  "repository": "git@github.com:code-dot-org/js-interpreter-tyrant.git",
+  "author": "Paul Carduner <paul@carduner.net>",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "8.2.1",
+    "yarn": "0.27.5"
+  },
+  "scripts": {
+    "postinstall": "./postinstall.sh",
+    "start": "cd packages/js-interpreter-portal && yarn start"
+  },
+  "cacheDirectories": [
+    "packages/js-interpreter-portal/node_modules",
+    "packages/js-interpreter-tyrant/node_modules"
+  ]
+}
