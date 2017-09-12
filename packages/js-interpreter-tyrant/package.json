@@ -10,6 +10,11 @@
   "engines": {
     "node": ">=6.9.0"
   },
+  "scripts": {
+    "build": "babel -d dist src/",
+    "build:watch": "nodemon --watch src --exec npm run build",
+    "prepublish": "npm run build"
+  },
   "files": [
     "LICENSE",
     "README.md",
@@ -25,6 +30,8 @@
     "eshost": "github:pcardune/eshost#f3fa7fa",
     "node-fetch": "^1.6.3",
     "progress": "^1.1.8",
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1",
     "test262-compiler": "github:pcardune/test262-compiler#ffa0dff",
     "test262-harness": "^2.4.0",
     "yargs": "^7.0.1"
@@ -33,6 +40,13 @@
     "@code-dot-org/js-interpreter": "^1.0.0"
   },
   "devDependencies": {
-    "eslint": "^3.19.0"
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^7.2.3",
+    "babel-preset-env": "^1.6.0",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "eslint": "^3.19.0",
+    "node-static": "^0.7.9",
+    "nodemon": "^1.12.0"
   }
 }
