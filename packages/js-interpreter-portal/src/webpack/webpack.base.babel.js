@@ -30,6 +30,7 @@ export default options => ({
     new webpack.DefinePlugin({
       'process.env': {
         NODE_ENV: JSON.stringify(process.env.NODE_ENV),
+        IS_CLIENT: true,
       },
     }),
     new webpack.NamedModulesPlugin(),

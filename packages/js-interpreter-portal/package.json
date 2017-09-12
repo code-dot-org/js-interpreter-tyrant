@@ -42,6 +42,7 @@
     "babel-polyfill": "^6.26.0",
     "classnames": "^2.2.5",
     "compression": "^1.7.0",
+    "events": "^1.1.1",
     "express": "^4.15.4",
     "moment-mini": "^2.18.1",
     "prop-types": "^15.5.10",

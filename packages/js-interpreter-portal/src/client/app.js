@@ -9,9 +9,6 @@ import AppWrapper from '../AppWrapper';
 const DEBUG = process.env.NODE_ENV !== 'production';
 
 const history = createHistory();
-
-console.log('heyo...');
-
 ReactDOM.render(
   <Router history={history}>
     <AppWrapper />

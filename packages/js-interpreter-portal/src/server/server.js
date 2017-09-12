@@ -6,10 +6,10 @@ import {Server} from 'http';
 import logger from './logger';
 import theApp from './app';
 import execute from './endpoints/execute';
+import SocketAPI from './SocketAPI';
 
 const pkg = require(resolve(process.cwd(), 'package.json'));
 
-process.env.IS_SERVER = true;
 const isDev = process.env.NODE_ENV !== 'production';
 const isProd = process.env.NODE_ENV === 'production';
 const customHost = process.env.HOST;
@@ -60,6 +60,7 @@ const server = app.listen(port, host, err => {
 });
 
 const io = new SocketIO(server);
-io.on('connection', function(socket) {
-  console.log('a user connected');
+const socketAPIs = new Map();
+io.on('connection', socket => {
+  socketAPIs.set(socket, new SocketAPI(socket));
 });
