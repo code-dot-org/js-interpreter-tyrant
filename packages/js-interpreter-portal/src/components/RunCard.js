@@ -1,7 +1,6 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment-mini';
-import ApiCalls from '../client/ApiCalls';
 import {ServerEvents, ClientEvents} from '../constants';
 import getConnection from '../client/getConnection';
 import TyrantEventQueue, {Events} from '../client/TyrantEventQueue';
@@ -13,8 +12,7 @@ export default class RunCard extends Component {
   state = {running: false, numTests: 0, data: {}};
 
   run = () => {
-    const io = getConnection();
-    io.emit(ServerEvents.EXECUTE);
+    getConnection().emit(ServerEvents.EXECUTE);
   };
 
   onTick = ({data}) => {
@@ -39,8 +37,7 @@ export default class RunCard extends Component {
     return (
       <div className="card">
         <div className="card-content">
-          <span className="card-title">Run Tests</span>
-          <p>Click the button below to run all the tests!</p>
+          <span className="card-title">Test Results</span>
           {progress !== null &&
             <div>
               <div className="progress">

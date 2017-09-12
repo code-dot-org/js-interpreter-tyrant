@@ -5,7 +5,6 @@ import SocketIO from 'socket.io';
 import {Server} from 'http';
 import logger from './logger';
 import theApp from './app';
-import execute from './endpoints/execute';
 import SocketAPI from './SocketAPI';
 
 const pkg = require(resolve(process.cwd(), 'package.json'));
@@ -50,7 +49,6 @@ if (isProd) {
   app.use(webpackHotMiddleware(compiler));
 }
 
-app.get('/execute', handleErrors(execute));
 app.get(/.*/, handleErrors(theApp));
 
 const server = app.listen(port, host, err => {

@@ -6,7 +6,7 @@ import styled from 'styled-components';
 const Wrapper = styled.div`
   padding: 10px;
   min-height: 100px;
-  max-height: 250px;
+  max-height: 350px;
   overflow: scroll;
   pre {
     margin: 0px;

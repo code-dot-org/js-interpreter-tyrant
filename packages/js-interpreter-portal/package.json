@@ -11,8 +11,12 @@
     "build:client": "NODE_ENV=production webpack --config src/webpack/webpack.prod.babel.js --color -p",
     "build:server": "BABEL_ENV=server babel src -d ./es5/src",
     "build:clean": "rm -rf ./build",
-    "start": "BABEL_ENV=server NODE_ENV=development babel-watch --exclude src/components src/server/run",
+    "start": "BABEL_ENV=server NODE_ENV=development babel-watch --inspect --trace-warnings --exclude src/components -- src/server/run",
     "start:prod": "NODE_ENV=production node es5/src/server"
+  },
+  "engines": {
+    "node": "8.2.1",
+    "yarn": "0.27.5"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -32,6 +36,7 @@
     "babel-preset-stage-0": "^6.24.1",
     "babel-watch": "^2.0.7",
     "chalk": "^2.1.0",
+    "eslint": "^4.6.1",
     "ip": "^1.1.5",
     "webpack": "^3.5.6",
     "webpack-dev-middleware": "^1.12.0",
@@ -45,6 +50,7 @@
     "events": "^1.1.1",
     "express": "^4.15.4",
     "moment-mini": "^2.18.1",
+    "nodegit": "^0.20.1",
     "prop-types": "^15.5.10",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",

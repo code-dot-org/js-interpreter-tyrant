@@ -60,7 +60,8 @@ const ARGS = yargs
   .boolean('rerun')
   .describe('retries', 'number of times to retry regressed tests')
   .nargs('retries', 1)
-  .boolean('noExit', "Don't quit with a non-zero exit code")
+  .boolean('noExit')
+  .describe('noExit', "Don't quit with a non-zero exit code")
   .help('h')
   .alias('h', 'help');
 
