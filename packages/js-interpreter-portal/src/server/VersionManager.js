@@ -3,6 +3,7 @@ import fs from 'fs';
 import Git, {Tag, Repository, Checkout} from 'nodegit';
 import ChildProcess from 'child_process';
 import {promisify} from 'util';
+import {ClientEvents} from '../constants';
 
 const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
@@ -22,24 +23,41 @@ function commitToJSON(commit) {
 }
 
 export default class VersionManager {
-  versions = [];
+  clientState = {
+    lastLog: '',
+    currentVersion: null,
+    versions: [],
+    updating: false,
+  };
   repo = null;
-  currentVersion = null;
-  head = null;
 
-  constructor(socket) {
+  constructor({socket}) {
     this.socket = socket;
   }
 
+  setClientState(newState) {
+    this.clientState = {...this.clientState, ...newState};
+    this.socket.emit(
+      ClientEvents.VERSION_MANAGER_STATE_CHANGE,
+      this.clientState
+    );
+  }
+
+  log(msg) {
+    console.log(msg);
+    this.setClientState({lastLog: msg});
+  }
+
   async update() {
+    this.setClientState({updating: true});
     const repoConfig = Repos.CODE_DOT_ORG;
     const localPath = this.getLocalRepoPath(repoConfig);
     if (fs.existsSync(localPath)) {
       this.repo = await Repository.open(localPath);
     } else {
-      console.log('cloning repo...');
+      this.log('cloning repo...');
       this.repo = await Git.Clone(repoConfig.gitUrl, localPath);
-      console.log('running yarn...');
+      this.log('running yarn...');
       const cmds = [
         'yarn',
         'curl https://codeload.github.com/tc39/test262/zip/89160ff5b7cb6d5f8938b4756829100110a14d5f -o test262.zip',
@@ -48,29 +66,34 @@ export default class VersionManager {
         'mv test262-89160ff5b7cb6d5f8938b4756829100110a14d5f tyrant/test262',
       ];
       for (const cmd of cmds) {
-        console.log(cmd);
+        this.log(cmd);
         await exec(cmd, {cwd: localPath});
       }
-      console.log('done');
+      this.log('done');
     }
     const versions = await Tag.list(this.repo);
-    this.versions = [];
+    const newVersions = [];
     for (const version of versions) {
       const tag = await this.repo.getTagByName(version);
       const commit = await this.repo.getCommit(tag.targetId());
-      this.versions.push({
+      newVersions.push({
         version,
         commit: commitToJSON(commit),
       });
     }
 
     const head = await this.repo.getHeadCommit();
-    this.currentVersion = {
+    const currentVersion = {
       sha: head.sha(),
       summary: head.summary(),
       time: head.timeMs(),
     };
-    return {currentVersion: this.currentVersion, versions: this.versions};
+    this.setClientState({
+      currentVersion,
+      versions: newVersions,
+      updating: false,
+    });
+    return this.clientState;
   }
 
   async selectVersion(version) {
@@ -84,12 +107,13 @@ export default class VersionManager {
       this.repo.defaultSignature,
       'Checkout: HEAD ' + tag.targetId()
     );
-    this.currentVersion = {
+    const currentVersion = {
       sha: head.sha(),
       summary: head.summary(),
       time: head.timeMs(),
     };
-    return this.currentVersion;
+    this.setClientState({currentVersion});
+    return currentVersion;
   }
 
   getLocalRepoPath(repoConfig, extraPath) {

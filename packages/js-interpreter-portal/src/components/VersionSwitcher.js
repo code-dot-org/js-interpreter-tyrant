@@ -20,6 +20,8 @@ export default class VersionSwitcher extends Component {
   state = {
     versions: [],
     currentVersion: null,
+    lastLog: '',
+    updating: false,
   };
 
   updateVersions = () => {
@@ -33,17 +35,13 @@ export default class VersionSwitcher extends Component {
 
   componentDidMount() {
     this.updateVersions();
+    getConnection().on(ClientEvents.VERSION_MANAGER_STATE_CHANGE, newState => {
+      this.setState(newState);
+    });
   }
 
   selectVersion = version => {
-    console.log('emitting', ServerEvents.SELECT_VERSION, version);
-    getConnection().emit(
-      ServerEvents.SELECT_VERSION,
-      version,
-      currentVersion => {
-        this.setState({currentVersion});
-      }
-    );
+    getConnection().emit(ServerEvents.SELECT_VERSION, version);
   };
 
   renderCommit({sha, summary, time}) {
@@ -63,9 +61,17 @@ export default class VersionSwitcher extends Component {
       <Wrapper className="card">
         <div className="card-content">
           <span className="card-title">Interpreter Versions</span>
+          <p>
+            {this.state.lastLog}
+          </p>
+          {this.state.updating &&
+            <div className="progress">
+              <div className="indeterminate" />
+            </div>}
           <ul className="collection">
             {this.state.versions.map(({version, commit}) =>
               <li
+                key={commit.sha}
                 className="collection-item"
                 onClick={() => this.selectVersion(version)}
               >

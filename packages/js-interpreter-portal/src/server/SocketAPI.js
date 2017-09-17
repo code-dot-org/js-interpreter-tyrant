@@ -33,7 +33,7 @@ export default class SocketAPI {
 
   constructor(socket) {
     this.socket = socket;
-    this.versionManager = new VersionManager(socket);
+    this.versionManager = new VersionManager({socket});
     Object.values(ServerEvents).forEach(eventName => {
       socket.on(eventName, this.getEventHandler(eventName));
     });

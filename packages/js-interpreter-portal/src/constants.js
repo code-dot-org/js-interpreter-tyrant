@@ -6,4 +6,5 @@ export const ServerEvents = {
 
 export const ClientEvents = {
   TYRANT_EVENT: 'TYRANT_EVENT',
+  VERSION_MANAGER_STATE_CHANGE: 'VERSION_MANAGER_STATE_CHANGE',
 };
