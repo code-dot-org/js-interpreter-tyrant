@@ -1,7 +1,7 @@
 import EventEmitter from 'events';
 import {Events} from '@code-dot-org/js-interpreter-tyrant/dist/constants';
 import moment from 'moment-mini';
-import getConnection from './getConnection';
+import Connection from './Connection';
 import {ClientEvents} from '../constants';
 
 export {Events};
@@ -10,10 +10,9 @@ class TyrantEventQueue extends EventEmitter {
   queue = [];
   byEventName = {};
 
-  constructor() {
-    super();
+  init() {
     if (process.env.IS_CLIENT) {
-      getConnection().on(ClientEvents.TYRANT_EVENT, event => {
+      Connection.on(ClientEvents.TYRANT_EVENT, event => {
         const {eventName} = event;
         if (!this.byEventName[eventName]) {
           this.byEventName[eventName] = [];
@@ -55,5 +54,4 @@ class TyrantEventQueue extends EventEmitter {
   }
 }
 
-const INSTANCE = new TyrantEventQueue();
-export default INSTANCE;
+export default new TyrantEventQueue();

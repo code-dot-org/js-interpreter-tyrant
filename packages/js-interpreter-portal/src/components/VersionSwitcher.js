@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import {ServerEvents, ClientEvents} from '../constants';
-import getConnection from '../client/getConnection';
+import Connection from '../client/Connection';
 import styled from 'styled-components';
 import moment from 'moment-mini';
 
@@ -24,24 +24,19 @@ export default class VersionSwitcher extends Component {
     updating: false,
   };
 
-  updateVersions = () => {
-    getConnection().emit(
-      ServerEvents.UPDATE_VERSIONS,
-      ({versions, currentVersion}) => {
-        this.setState({versions, currentVersion});
-      }
-    );
+  updateVersions = async () => {
+    this.setState(await Connection.VersionManager.update());
   };
 
   componentDidMount() {
     this.updateVersions();
-    getConnection().on(ClientEvents.VERSION_MANAGER_STATE_CHANGE, newState => {
+    Connection.on(ClientEvents.VERSION_MANAGER_STATE_CHANGE, newState => {
       this.setState(newState);
     });
   }
 
   selectVersion = version => {
-    getConnection().emit(ServerEvents.SELECT_VERSION, version);
+    Connection.VersionManager.selectVersion(version);
   };
 
   renderCommit({sha, summary, time}) {

@@ -4,6 +4,7 @@ import Git, {Tag, Repository, Checkout} from 'nodegit';
 import ChildProcess from 'child_process';
 import {promisify} from 'util';
 import {ClientEvents} from '../constants';
+import RPCInterface from './RPCInterface';
 
 const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
@@ -22,6 +23,7 @@ function commitToJSON(commit) {
   };
 }
 
+@RPCInterface
 export default class VersionManager {
   clientState = {
     lastLog: '',
@@ -31,7 +33,7 @@ export default class VersionManager {
   };
   repo = null;
 
-  constructor({socket}) {
+  constructor(socket) {
     this.socket = socket;
   }
 
@@ -48,7 +50,7 @@ export default class VersionManager {
     this.setClientState({lastLog: msg});
   }
 
-  async update() {
+  update = async () => {
     this.setClientState({updating: true});
     const repoConfig = Repos.CODE_DOT_ORG;
     const localPath = this.getLocalRepoPath(repoConfig);
@@ -94,9 +96,9 @@ export default class VersionManager {
       updating: false,
     });
     return this.clientState;
-  }
+  };
 
-  async selectVersion(version) {
+  selectVersion = async version => {
     const tag = await this.repo.getTagByName(version);
     const head = await this.repo.getCommit(tag.targetId());
     await Checkout.tree(this.repo, head, {
@@ -114,7 +116,7 @@ export default class VersionManager {
     };
     this.setClientState({currentVersion});
     return currentVersion;
-  }
+  };
 
   getLocalRepoPath(repoConfig, extraPath) {
     const args = [REPO_ROOT, repoConfig.name];

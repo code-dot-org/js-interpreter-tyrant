@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 
-import {shortTestName} from './util';
+import {shortTestName} from '../util';
 
 function flatten(arr) {
   let newArr = [];

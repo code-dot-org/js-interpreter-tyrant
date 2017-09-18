@@ -2,7 +2,7 @@ import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment-mini';
 import {ServerEvents, ClientEvents} from '../constants';
-import getConnection from '../client/getConnection';
+import Connection from '../client/Connection';
 import TyrantEventQueue, {Events} from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
 
@@ -12,7 +12,7 @@ export default class RunCard extends Component {
   state = {running: false, numTests: 0, data: {}};
 
   run = () => {
-    getConnection().emit(ServerEvents.EXECUTE);
+    Connection.Runner.execute();
   };
 
   onTick = ({data}) => {
