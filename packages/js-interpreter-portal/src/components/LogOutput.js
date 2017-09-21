@@ -1,10 +1,11 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
 import TyrantEventQueue, {Events} from '../client/TyrantEventQueue';
 import styled from 'styled-components';
+import {grey} from 'material-ui/colors';
 
 const Wrapper = styled.div`
   padding: 10px;
+  background-color: ${grey[800]};
   min-height: 100px;
   max-height: 350px;
   overflow: scroll;
@@ -14,6 +15,10 @@ const Wrapper = styled.div`
       font-size: smaller;
     }
     white-space: pre-wrap;
+    color: white;
+    .timestamp {
+      color: ${grey[500]};
+    }
   }
 `;
 
@@ -45,10 +50,10 @@ export default class LogOutput extends Component {
     const nodes = [];
     let lastEvent = null;
     function renderLastEvent() {
-      const {timestamp, eventName, eventId, data: {message}} = lastEvent;
+      const {timestamp, eventId, data: {message}} = lastEvent;
       nodes.push(
         <pre key={eventId}>
-          <span className="grey-text">
+          <span className="timestamp">
             {timestamp.format('HH:mm:ss.SSS')}:
           </span>{' '}
           {formatMessage(message)}
@@ -81,9 +86,8 @@ export default class LogOutput extends Component {
   };
 
   render() {
-    const RE = /^(?=\s)*/g;
     return (
-      <Wrapper className="grey darken-3 white-text">
+      <Wrapper>
         {this.getMessages()}
       </Wrapper>
     );

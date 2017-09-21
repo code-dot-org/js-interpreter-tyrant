@@ -1,15 +1,17 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import {ServerEvents, ClientEvents} from '../constants';
-import Connection from '../client/Connection';
-import styled from 'styled-components';
 import moment from 'moment-mini';
+import Card, {CardHeader, CardContent} from 'material-ui/Card';
+import List, {ListItem, ListItemText} from 'material-ui/List';
+import {LinearProgress, withStyles} from 'material-ui';
+import styled from 'styled-components';
 
-const Wrapper = styled.div`
-  .collection-item {
-    cursor: pointer;
-    &:hover {
-      background-color: #eee;
+import {ClientEvents} from '../constants';
+import Connection from '../client/Connection';
+
+const Commit = styled.span`
+  span {
+    &:last-child {
+      float: right;
     }
   }
 `;
@@ -42,42 +44,49 @@ export default class VersionSwitcher extends Component {
   renderCommit({sha, summary, time}) {
     time = moment(new Date(time));
     return (
-      <span>
-        <span className="grey-text">{sha.slice(0, 6)}</span> {summary}{' '}
-        <span className="right">
+      <Commit>
+        <span>{sha.slice(0, 6)}</span> {summary}{' '}
+        <span>
           {time.format('ll')} {time.format('LT')}
         </span>
-      </span>
+      </Commit>
     );
   }
 
   render() {
     return (
-      <Wrapper className="card">
-        <div className="card-content">
-          <span className="card-title">Interpreter Versions</span>
-          <p>
-            {this.state.lastLog}
-          </p>
-          {this.state.updating &&
-            <div className="progress">
-              <div className="indeterminate" />
-            </div>}
-          <ul className="collection">
+      <Card>
+        <CardHeader title="Interpreter Versions" />
+        <CardContent style={{padding: 0}}>
+          {this.state.lastLog &&
+            <p>
+              {this.state.lastLog}
+            </p>}
+          {this.state.updating && <LinearProgress />}
+          <List dense>
             {this.state.versions.map(({version, commit}) =>
-              <li
+              <ListItem
                 key={commit.sha}
-                className="collection-item"
+                button
+                divider
+                disableRipple
                 onClick={() => this.selectVersion(version)}
               >
-                {commit.sha === this.state.currentVersion.sha &&
-                  <strong>(current)</strong>}{' '}
-                <strong>{version}</strong> {this.renderCommit(commit)}
-              </li>
+                <ListItemText
+                  primary={
+                    <span>
+                      {commit.sha === this.state.currentVersion.sha &&
+                        <strong>(current)</strong>}{' '}
+                      {version}
+                    </span>
+                  }
+                  secondary={this.renderCommit(commit)}
+                />
+              </ListItem>
             )}
-          </ul>
-        </div>
-      </Wrapper>
+          </List>
+        </CardContent>
+      </Card>
     );
   }
 }

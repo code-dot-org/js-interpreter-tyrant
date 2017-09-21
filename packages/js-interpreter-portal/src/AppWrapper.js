@@ -1,8 +1,10 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
 import Helmet from 'react-helmet';
-import styled from 'styled-components';
-import {Link, Route, Switch, withRouter} from 'react-router-dom';
+import {Route, Switch} from 'react-router-dom';
+import AppBar from 'material-ui/AppBar';
+import Toolbar from 'material-ui/Toolbar';
+import Typography from 'material-ui/Typography';
+
 import FrontPage from './pages/FrontPage';
 
 function NotFound() {
@@ -18,14 +20,14 @@ export default class AppWrapper extends Component {
         <Helmet>
           <title>JS Interpreter Tyrant</title>
         </Helmet>
-        <nav>
-          <div className="nav-wrapper indigo">
-            <a href="#" className="brand-logo center">
+        <AppBar position="static">
+          <Toolbar>
+            <Typography type="title" color="inherit">
               JS Interpreter Tyrant
-            </a>
-          </div>
-        </nav>
-        <div className="grey lighten-3">
+            </Typography>
+          </Toolbar>
+        </AppBar>
+        <div>
           <Switch>
             <Route exact path="/" component={FrontPage} />
             <Route component={NotFound} />

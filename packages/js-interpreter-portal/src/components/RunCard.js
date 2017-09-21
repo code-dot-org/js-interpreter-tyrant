@@ -1,10 +1,9 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import moment from 'moment-mini';
-import {ServerEvents, ClientEvents} from '../constants';
 import Connection from '../client/Connection';
 import TyrantEventQueue, {Events} from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
+import Card, {CardHeader, CardContent, CardActions} from 'material-ui/Card';
+import {LinearProgress, Button} from 'material-ui';
 
 export default class RunCard extends Component {
   static propTypes = {};
@@ -15,9 +14,8 @@ export default class RunCard extends Component {
     Connection.Runner.execute();
   };
 
-  onTick = ({data}) => {
+  onTick = () => {
     this.setState({completed: this.state.completed + 1});
-    console.log(event);
   };
 
   onStartedRunning = ({data: {numTests}}) => {
@@ -35,23 +33,25 @@ export default class RunCard extends Component {
         ? this.state.completed / this.state.numTests * 100
         : null;
     return (
-      <div className="card">
-        <div className="card-content">
-          <span className="card-title">Test Results</span>
+      <Card>
+        <CardHeader title="Test Results" />
+        <CardContent>
           {progress !== null &&
             <div>
-              <div className="progress">
-                <div className="determinate" style={{width: `${progress}%`}} />
-              </div>
+              <LinearProgress
+                color="accent"
+                mode="determinate"
+                value={progress}
+              />
               <LogOutput />
             </div>}
-        </div>
-        <div className="card-action">
-          <button className="btn" onClick={this.run}>
+        </CardContent>
+        <CardActions>
+          <Button color="primary" raised onClick={this.run}>
             Run Tests
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardActions>
+      </Card>
     );
   }
 }

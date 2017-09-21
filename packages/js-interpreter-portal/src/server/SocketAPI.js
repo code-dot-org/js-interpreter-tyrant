@@ -1,4 +1,4 @@
-import {ServerEvents, ClientEvents} from '../constants';
+import {ClientEvents} from '../constants';
 import VersionManager, {Repos} from './VersionManager';
 import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
 import RPCInterface, {EventNames} from './RPCInterface';

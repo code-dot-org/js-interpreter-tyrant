@@ -3,9 +3,7 @@
  */
 
 import path from 'path';
-import fs from 'fs';
 import webpack from 'webpack';
-import logger from '../server/logger';
 import base from './webpack.base.babel';
 
 const plugins = [

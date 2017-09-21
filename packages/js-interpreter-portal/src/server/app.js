@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import React from 'react';
 import {renderToString} from 'react-dom/server';
+import {ServerStyleSheet} from 'styled-components';
 import {StaticRouter} from 'react-router';
-import {ThemeProvider, ServerStyleSheet} from 'styled-components';
 import Helmet from 'react-helmet';
 
 import AppWrapper from '../AppWrapper';
 
-const initialState = {};
+const ENABLE_SERVER_SIDE_RENDERING = false;
 
 let manifest;
 function getAssetPath(name) {
@@ -28,13 +28,16 @@ function getAssetPath(name) {
 export default async (req, res) => {
   const context = {};
   const sheet = new ServerStyleSheet();
-  const main = renderToString(
-    sheet.collectStyles(
-      <StaticRouter location={req.url} context={context}>
-        <AppWrapper />
-      </StaticRouter>
-    )
-  );
+  let main = '';
+  if (ENABLE_SERVER_SIDE_RENDERING) {
+    main = renderToString(
+      sheet.collectStyles(
+        <StaticRouter location={req.url} context={context}>
+          <AppWrapper />
+        </StaticRouter>
+      )
+    );
+  }
   const helmet = Helmet.renderStatic();
 
   if (context.url) {
@@ -58,10 +61,6 @@ export default async (req, res) => {
   <link
     href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/5.0.0/sanitize.min.css"
     rel="stylesheet"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.1/css/materialize.min.css"
   />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link
@@ -95,7 +94,6 @@ export default async (req, res) => {
     </noscript>
     <div
       id="app"
-      class="grey lighten-3"
     >${main}</div>
     <script src="${getAssetPath('main.js')}"></script>
   </body>

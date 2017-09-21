@@ -1,21 +1,30 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
 import RunCard from '../components/RunCard';
 import VersionSwitcher from '../components/VersionSwitcher';
+//import TestResultsTable from '../components/TestResultsTable';
+import Grid from 'material-ui/Grid';
+import styled from 'styled-components';
+
+const Wrapper = styled(Grid).attrs({container: true, spacing: 24})`
+  padding: 24px;
+`;
 
 export default class FrontPage extends Component {
   static propTypes = {};
 
   render() {
     return (
-      <div className="row">
-        <div className="col s12 m6">
+      <Wrapper>
+        <Grid item xs={12} md={6}>
           <VersionSwitcher />
-        </div>
-        <div className="col s12 m6">
+        </Grid>
+        <Grid item xs={12} md={6}>
           <RunCard />
-        </div>
-      </div>
+        </Grid>
+        <Grid>
+          <Grid item xs={12} md={6} />
+        </Grid>
+      </Wrapper>
     );
   }
 }

@@ -18,7 +18,7 @@ class Connection {
           this[cls] = {};
         }
         this[cls][func] = async (...args) => {
-          return await new Promise((resolve, reject) => {
+          return await new Promise(resolve => {
             this.conn.emit(eventName, ...args, (...response) => {
               resolve(...response);
             });
