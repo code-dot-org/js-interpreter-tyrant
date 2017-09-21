@@ -12,16 +12,24 @@
     "build:server": "BABEL_ENV=server babel src -d ./es5/src",
     "build:clean": "rm -rf ./build",
     "start": "BABEL_ENV=server NODE_ENV=development babel-watch --inspect --trace-warnings --exclude src/components -- src/server/run",
-    "start:prod": "NODE_ENV=production node es5/src/server"
+    "start:prod": "NODE_ENV=production node es5/src/server",
+    "lint": "eslint src"
   },
   "engines": {
     "node": "8.2.1",
     "yarn": "0.27.5"
   },
+  "lint-staged": {
+    "gitDir": "../../",
+    "*.js": [
+      "prettier --write --single-quote --no-bracket-spacing --trailing-comma es5",
+      "git add"
+    ]
+  },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
-    "babel-eslint": "^7.2.3",
+    "babel-eslint": "^8.0.0",
     "babel-jest": "^21.0.2",
     "babel-loader": "^7.1.2",
     "babel-plugin-styled-components": "^1.2.0",
@@ -39,6 +47,7 @@
     "chalk": "^2.1.0",
     "eslint": "^4.6.1",
     "ip": "^1.1.5",
+    "lint-staged": "^4.2.1",
     "webpack": "^3.5.6",
     "webpack-dev-middleware": "^1.12.0",
     "webpack-hot-middleware": "^2.19.1",
@@ -48,9 +57,10 @@
     "babel-polyfill": "^6.26.0",
     "classnames": "^2.2.5",
     "compression": "^1.7.0",
+    "eslint-plugin-react": "^7.3.0",
     "events": "^1.1.1",
     "express": "^4.15.4",
-    "material-ui": "^0.19.2",
+    "material-ui": "next",
     "material-ui-icons": "^1.0.0-beta.10",
     "moment-mini": "^2.18.1",
     "nodegit": "^0.20.1",
