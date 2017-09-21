@@ -595,6 +595,7 @@ export default class Tyrant {
                   fixed: numFixed,
                   new: numNew,
                   minutes: eta,
+                  test,
                 });
               }
             });

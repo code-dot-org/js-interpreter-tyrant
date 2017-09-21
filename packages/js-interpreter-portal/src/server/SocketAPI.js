@@ -30,9 +30,11 @@ class Runner {
       '--progress',
       '--hostPath',
       this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG, 'bin/run.js'),
-      this.versionManager.getLocalRepoPath(
-        Repos.CODE_DOT_ORG,
-        'tyrant/test262/test/built-ins/isNaN/*.js'
+      ...['isNaN', 'NaN', 'Number'].map(dir =>
+        this.versionManager.getLocalRepoPath(
+          Repos.CODE_DOT_ORG,
+          `tyrant/test262/test/built-ins/${dir}/*.js`
+        )
       ),
     ];
     console.log('running tyrant with', args.join(' '));

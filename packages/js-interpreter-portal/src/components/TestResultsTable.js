@@ -1,19 +1,11 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
+import {List, ListItem, ListItemText, Avatar} from 'material-ui';
+import {ExpandLess, ExpandMore, Folder} from 'material-ui-icons';
+import Collapse from 'material-ui/transitions/Collapse';
+import {withTheme} from 'material-ui/styles';
 
 import {shortTestName} from '../util';
-
-function flatten(arr) {
-  let newArr = [];
-  arr.forEach(item => {
-    if (Array.isArray(item)) {
-      newArr = [...newArr, flatten(item)];
-    } else {
-      newArr.push(item);
-    }
-  });
-  return newArr;
-}
 
 function groupBy(items, getKey, agg) {
   const groups = new Map();
@@ -32,12 +24,14 @@ function groupBy(items, getKey, agg) {
   return groups;
 }
 
+@withTheme
 export default class TestResultsTable extends Component {
   static propTypes = {
     results: PropTypes.array.isRequired,
     title: PropTypes.string,
     filter: PropTypes.func,
     level: PropTypes.number,
+    theme: PropTypes.object.isRequired,
   };
 
   static defaultProps = {
@@ -58,15 +52,12 @@ export default class TestResultsTable extends Component {
     });
   };
 
-  renderLevel(results) {
-    const rows = Array.from(
+  getRowData(results, level = 0) {
+    return Array.from(
       groupBy(
         results,
         test =>
-          shortTestName(test.file)
-            .split('/')
-            .slice(this.props.level, this.props.level + 1)
-            .join('/'),
+          shortTestName(test.file).split('/').slice(level, level + 1).join('/'),
         (key, tests) => {
           const byResult = groupBy(tests, test => test.result.pass);
           return {
@@ -78,48 +69,60 @@ export default class TestResultsTable extends Component {
           };
         }
       ).values()
-    ).map(({results, key, failed, passed, total}) =>
-      [
-        <tr key={key} onClick={this.onClickRow(key)}>
-          <td>
-            {key}
-          </td>
-          <td>
-            {passed}/{total}
-          </td>
-          <td>
-            {Math.round(passed / total * 100)}%
-          </td>
-        </tr>,
-      ].concat(
-        this.state.expanded[key]
-          ? [
-              <tr key={key + 'expanded'}>
-                <td colSpan={3}>
-                  <TestResultsTable
-                    results={results}
-                    level={this.props.level + 1}
-                  />
-                </td>
-              </tr>,
-            ]
-          : []
-      )
     );
-    return (
-      <table>
-        <thead>
-          <tr>
-            <th>Directory</th>
-            <th># Passed</th>
-            <th>% Passed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {flatten(rows)}
-        </tbody>
-      </table>
-    );
+  }
+
+  renderLevel(results, level = 0) {
+    return this.getRowData(
+      results,
+      level
+    ).map(({results, key, passed, total}) => {
+      const expandable = !key.endsWith('.js');
+      const isExpanded = this.state.expanded[key];
+      let primary = key;
+      if (expandable) {
+        primary += '/';
+      }
+      const row = (
+        <ListItem
+          key={key}
+          button
+          disableRipple
+          onClick={this.onClickRow(key)}
+          style={{
+            paddingLeft:
+              this.props.theme.spacing.unit +
+              level * this.props.theme.spacing.unit * 4,
+          }}
+        >
+          {expandable &&
+            <Avatar>
+              <Folder />
+            </Avatar>}
+          <ListItemText
+            primary={primary}
+            secondary={`${passed}/${total} ${Math.round(
+              passed / total * 100
+            )}%`}
+          />
+          {expandable && (isExpanded ? <ExpandLess /> : <ExpandMore />)}
+        </ListItem>
+      );
+      if (isExpanded) {
+        const rows = this.renderLevel(results, level + 1).map((item, index) =>
+          <Collapse
+            key={index}
+            in={this.state.expanded[key]}
+            transitionDuration="auto"
+            unmountOnExit
+          >
+            {item}
+          </Collapse>
+        );
+        return [row, ...rows];
+      }
+      return [row];
+    });
   }
 
   render() {
@@ -129,17 +132,9 @@ export default class TestResultsTable extends Component {
     }
 
     return (
-      <div className="card">
-        {this.props.title &&
-          <div className="card-content indigo lighten-3">
-            <span className="card-title">
-              {this.props.title}
-            </span>
-          </div>}
-        <div className="card-content">
-          {this.renderLevel(results)}
-        </div>
-      </div>
+      <List dense>
+        {this.renderLevel(results)}
+      </List>
     );
   }
 }
