@@ -513,8 +513,9 @@ export default class Tyrant {
                   this.write(...args);
                 }
               };
+              let testDiff;
               if (this.argv.diff) {
-                const testDiff = this.getTestDiff(test);
+                testDiff = this.getTestDiff(test);
                 if (testDiff.isRegression) {
                   write('R');
                   numRegressed++;
@@ -595,7 +596,7 @@ export default class Tyrant {
                   fixed: numFixed,
                   new: numNew,
                   minutes: eta,
-                  test,
+                  test: {...test, ...testDiff},
                 });
               }
             });

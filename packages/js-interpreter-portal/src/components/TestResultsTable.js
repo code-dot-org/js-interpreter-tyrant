@@ -4,8 +4,15 @@ import {List, ListItem, ListItemText, Avatar} from 'material-ui';
 import {ExpandLess, ExpandMore, Folder} from 'material-ui-icons';
 import Collapse from 'material-ui/transitions/Collapse';
 import {withTheme} from 'material-ui/styles';
+import styled from 'styled-components';
 
 import {shortTestName} from '../util';
+
+const SecondaryText = styled.span`
+  span:after {
+    content: '. ';
+  }
+`;
 
 function groupBy(items, getKey, agg) {
   const groups = new Map();
@@ -57,11 +64,21 @@ export default class TestResultsTable extends Component {
           shortTestName(test.file).split('/').slice(level, level + 1).join('/'),
         (key, tests) => {
           const byResult = groupBy(tests, test => test.result.pass);
+          const byDiff = groupBy(
+            tests,
+            test =>
+              test.isFix
+                ? 'fix'
+                : test.isRegression ? 'regression' : test.isNew ? 'new' : 'same'
+          );
           return {
             results: tests,
             key,
             failed: (byResult.get(false) || []).length,
             passed: (byResult.get(true) || []).length,
+            fixed: (byDiff.get('fix') || []).length,
+            regressed: (byDiff.get('regression') || []).length,
+            newTest: (byDiff.get('new') || []).length,
             total: tests.length,
           };
         }
@@ -69,11 +86,35 @@ export default class TestResultsTable extends Component {
     );
   }
 
+  renderRowText({passed, fixed, regressed, newTest, total}) {
+    return (
+      <SecondaryText>
+        <span>
+          {passed}/{total} ({Math.round(passed / total * 100)}%) passed
+        </span>
+        {fixed > 0 &&
+          <span>
+            {fixed} fixes
+          </span>}
+        {regressed > 0 &&
+          <span>
+            {regressed} regressions
+          </span>}
+        {newTest > 0 &&
+          <span>
+            {newTest} new tests
+          </span>}
+        {!fixed &&
+          !regressed &&
+          !newTest &&
+          <span>no changes from last run</span>}
+      </SecondaryText>
+    );
+  }
+
   renderLevel(results, level = 0) {
-    return this.getRowData(
-      results,
-      level
-    ).map(({results, key, passed, total}) => {
+    return this.getRowData(results, level).map(data => {
+      const {results, key} = data;
       const expandable = !key.endsWith('.js');
       const isExpanded = this.state.expanded[key];
       let primary = key;
@@ -98,9 +139,7 @@ export default class TestResultsTable extends Component {
             </Avatar>}
           <ListItemText
             primary={primary}
-            secondary={`${passed}/${total} ${Math.round(
-              passed / total * 100
-            )}%`}
+            secondary={this.renderRowText(data)}
           />
           {expandable && (isExpanded ? <ExpandLess /> : <ExpandMore />)}
         </ListItem>

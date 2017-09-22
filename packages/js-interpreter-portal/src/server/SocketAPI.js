@@ -22,6 +22,10 @@ export default class SocketAPI {
     this.masterRunner = new MasterRunner(this.io, this.backendManager);
 
     this.io.on('connection', this.onConnection);
+    if (!this.backendManager.heroku) {
+      // running locally. Go ahead and start up a slave
+      this.backendManager.setNumBackends({numBackends: 1});
+    }
   }
 
   getEventHandler = eventName => (...args) => this.handlers[eventName](...args);
