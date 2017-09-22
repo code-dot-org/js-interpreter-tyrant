@@ -40,10 +40,7 @@ export default class TestResultsTable extends Component {
   };
 
   state = {
-    expanded: {
-      'built-ins': true,
-      isNaN: true,
-    },
+    expanded: {},
   };
 
   onClickRow = key => () => {

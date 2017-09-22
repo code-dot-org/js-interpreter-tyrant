@@ -1,31 +1,31 @@
 export const EventNames = [];
 
 export default function RPCInterface(cls) {
-  return class Foo extends cls {
-    constructor(socket, ...args) {
-      super(socket, ...args);
+  return class WrappedClass extends cls {
+    listenTo(socket) {
       Object.keys(this)
         .filter(key => !key.startsWith('_') && typeof this[key] === 'function')
         .forEach(key => {
           const eventName = `${cls.name}.${key}`;
-          console.log('listening for', eventName);
+          console.log('listening for', eventName, 'from', socket.id);
           socket.on(
             eventName,
-            async (...args) => await this.__handler(key, ...args)
+            async (data, callback) =>
+              await this.__handler(socket.id, key, data, callback)
           );
-          console.log('setting up', eventName);
           EventNames.push(eventName);
         });
     }
 
-    async __handler(key, ...args) {
+    async __handler(socketId, key, data, callback) {
+      if (typeof data === 'function') {
+        callback = data;
+        data = null;
+      }
       if (!key.startsWith('_') && typeof this[key] === 'function') {
-        const result = await this[key](...args);
-        if (args.length > 0) {
-          const callback = args[args.length - 1];
-          if (typeof callback === 'function') {
-            callback(result);
-          }
+        const result = await this[key](data, socketId);
+        if (callback) {
+          callback(result);
         }
       } else {
         console.warn('no handler for', key);

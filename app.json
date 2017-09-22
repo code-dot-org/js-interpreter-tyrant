@@ -1,0 +1,22 @@
+{
+  "name": "js-interpreter-tyrant",
+  "scripts": {
+  },
+  "env": {
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+    },
+    "worker": {
+      "quantity": 2,
+    }
+  },
+  "addons": [
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}

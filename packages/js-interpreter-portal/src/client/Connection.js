@@ -1,4 +1,4 @@
-import io from 'socket.io-client';
+import SocketIOClient from 'socket.io-client';
 import {EventNames} from '../server/RPCInterface';
 
 class Connection {
@@ -6,11 +6,13 @@ class Connection {
     return this.conn.on(...args);
   }
 
-  initClient(callback) {
-    if (!process.env.IS_CLIENT) {
-      throw new Error('initClient can only be called on the client...');
-    }
-    this.conn = io();
+  onReconnectAttempt = attemptNumber => {
+    console.log('Attempting to reconnect to server. Attempt #', attemptNumber);
+  };
+
+  initClient({url, callback}) {
+    this.conn = SocketIOClient.connect(url, {reconnect: true});
+    this.conn.on('reconnect_attempt', this.onReconnectAttempt);
     this.conn.emit('getEventNames', eventNames => {
       eventNames.forEach(eventName => {
         const [cls, func] = eventName.split('.');
@@ -25,7 +27,7 @@ class Connection {
           });
         };
       });
-      callback();
+      callback(this.conn);
     });
   }
 

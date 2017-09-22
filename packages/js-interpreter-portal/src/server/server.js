@@ -5,12 +5,11 @@ import SocketIO from 'socket.io';
 import logger from './logger';
 import theApp from './app';
 import SocketAPI from './SocketAPI';
+import {MASTER_PORT} from './constants';
 
 const isProd = process.env.NODE_ENV === 'production';
 const customHost = process.env.HOST;
 const host = customHost || null; // Let http.Server use its default IPv6/4 host
-
-const port = process.env.PORT || 3000;
 
 const app = express();
 
@@ -46,14 +45,12 @@ if (isProd) {
 
 app.get(/.*/, handleErrors(theApp));
 
-const server = app.listen(port, host, err => {
+const server = app.listen(MASTER_PORT, host, err => {
   if (err) {
     return logger.error(err.message);
   }
 });
+console.log('listening on', host, MASTER_PORT);
 
-const io = new SocketIO(server);
-const socketAPIs = new Map();
-io.on('connection', socket => {
-  socketAPIs.set(socket, new SocketAPI(socket));
-});
+new SocketAPI(SocketIO(server));
+console.log('ready to accept socket.io connections');

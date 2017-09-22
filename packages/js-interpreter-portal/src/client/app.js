@@ -28,14 +28,16 @@ const theme = createMuiTheme({
 });
 
 const history = createHistory();
-Connection.initClient(() => {
-  TyrantEventQueue.init();
-  ReactDOM.render(
-    <Router history={history}>
-      <MuiThemeProvider theme={theme}>
-        <AppWrapper />
-      </MuiThemeProvider>
-    </Router>,
-    document.getElementById('app')
-  );
+Connection.initClient({
+  callback: () => {
+    TyrantEventQueue.init();
+    ReactDOM.render(
+      <Router history={history}>
+        <MuiThemeProvider theme={theme}>
+          <AppWrapper />
+        </MuiThemeProvider>
+      </Router>,
+      document.getElementById('app')
+    );
+  },
 });

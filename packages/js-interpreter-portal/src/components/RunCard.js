@@ -9,22 +9,43 @@ import TestResultsTable from './TestResultsTable';
 export default class RunCard extends Component {
   static propTypes = {};
 
-  state = {completed: null, numTests: 0, results: []};
+  state = {backends: {}};
 
   run = () => {
     this.setState({numTests: 1, completed: 0});
-    Connection.Runner.execute();
+    Connection.MasterRunner.execute();
   };
 
-  onTick = ({data: {test}}) => {
+  getBackendState(backendId) {
+    return this.state.backends[backendId];
+  }
+
+  setBackendState(backendId, newState) {
     this.setState({
-      completed: this.state.completed + 1,
-      results: [...this.state.results, test],
+      backends: {
+        ...this.state.backends,
+        [backendId]: {
+          ...this.getBackendState(backendId),
+          ...newState,
+        },
+      },
+    });
+  }
+
+  onTick = ({backendId, data: {test}}) => {
+    const backendState = this.getBackendState(backendId);
+    this.setBackendState(backendId, {
+      completed: backendState.completed + 1,
+      results: [...backendState.results, test],
     });
   };
 
-  onStartedRunning = ({data: {numTests}}) => {
-    this.setState({numTests, completed: 0});
+  onStartedRunning = ({backendId, data: {numTests}}) => {
+    this.setBackendState(backendId, {
+      numTests,
+      completed: 0,
+      results: [],
+    });
   };
 
   componentDidMount() {
@@ -32,16 +53,31 @@ export default class RunCard extends Component {
     TyrantEventQueue.on(Events.STARTED_RUNNING, this.onStartedRunning);
   }
 
+  getAggregateBackendState() {
+    const state = {
+      numTests: 0,
+      completed: 0,
+      results: [],
+    };
+    Object.values(this.state.backends).forEach(backend => {
+      state.numTests += backend.numTests;
+      state.completed += backend.completed;
+      if (backend.results) {
+        state.results = state.results.concat(backend.results);
+      }
+    });
+    return state;
+  }
+
   render() {
+    const state = this.getAggregateBackendState();
     const progress =
-      this.state.numTests > 0
-        ? this.state.completed / this.state.numTests * 100
-        : null;
+      state.numTests > 0 ? state.completed / state.numTests * 100 : null;
     return (
       <Card>
         <CardHeader title="Test Results" />
         <CardContent>
-          <TestResultsTable results={this.state.results} />
+          <TestResultsTable results={state.results} />
           {progress !== null &&
             <div>
               <LinearProgress
