@@ -114,15 +114,17 @@ export default class SlaveVersionManager {
     if (!head) {
       head = await this.repo.getMasterCommit();
     }
-    const jsonCommits = [];
-    const queue = [head];
-    while (queue.length > 0 && jsonCommits.length < 100) {
-      const commit = queue.shift();
-      jsonCommits.push(commitToJSON(commit));
-      const parents = await commit.getParents(1);
-      parents.forEach(parent => queue.push(parent));
-    }
-    jsonCommits.sort((a, b) => b.time - a.time);
+    const history = head.history(Revwalk.SORT.Time);
+    const jsonCommits = await new Promise((resolve, reject) => {
+      // History emits "commit" event for each commit in the branch's history
+      const commits = [];
+      history.on('commit', commit => {
+        commits.push(commitToJSON(commit));
+      });
+      history.on('end', () => resolve(commits));
+      history.on('error', reject);
+      history.start();
+    });
     return jsonCommits;
   };
 
@@ -159,13 +161,20 @@ export default class SlaveVersionManager {
       await this.cloneRepo();
       head = await this.repo.getHeadCommit();
     }
-    await this.ensureRemotes();
     let commits = await this.getCommitLog();
+    const commitsBySha = {};
+    commits.forEach(commit => (commitsBySha[commit.sha] = commit));
+    await this.ensureRemotes();
     let upstream = await this.getCommitLog(
       await this.repo.getReferenceCommit('refs/remotes/NeilFraser/master')
     );
     commits = commits.map(commit => ({version: commit.summary, commit}));
-    upstream = upstream.map(commit => ({version: commit.summary, commit}));
+    for (let i = 0; i < upstream.length; i++) {
+      let upstreamCommit = upstream[i];
+      let originCommit = commitsBySha[upstreamCommit.sha];
+      upstreamCommit.merged = !!originCommit;
+      upstream[i] = {version: upstreamCommit.summary, commit: upstreamCommit};
+    }
     const currentVersion = commitToJSON(head);
     this.setClientState({
       currentVersion,
@@ -189,8 +198,6 @@ export default class SlaveVersionManager {
   };
 
   selectVersion = async sha => {
-    //    const tag = await this.repo.getTagByName(version);
-    //    const sha = tag.targetId();
     const head = await this.repo.getCommit(sha);
     await Checkout.tree(this.repo, head, {
       checkoutStrategy: Checkout.STRATEGY.FORCE,
@@ -207,6 +214,31 @@ export default class SlaveVersionManager {
     };
     this.setClientState({currentVersion});
     return currentVersion;
+  };
+
+  mergeCommit = async sha => {
+    const commitToMerge = await this.repo.getCommit(sha);
+    if (!commitToMerge) {
+      throw new Error('Attempting to merge non-existent commit', sha);
+    }
+    const master = await this.repo.getMasterCommit();
+    const index = await Merge.commits(this.repo, master, commitToMerge);
+    if (index.hasConflict) {
+      this.log('Unable to merge. Found conflict.');
+    } else {
+      const oid = await index.writeTreeTo(this.repo);
+      const masterBranch = await this.repo.getBranch('master');
+      const commitId = await this.repo.createCommit(
+        masterBranch.name(),
+        Signature.now('Tyrant', 'paul@code.org'),
+        Signature.now('Tyrant', 'paul@code.org'),
+        `Merge upstream commit ${sha} into master`,
+        oid,
+        [master, commitToMerge]
+      );
+      this.log(`Successfully merged commit ${commitId}`);
+      this.update();
+    }
   };
 
   getLocalRepoPath(repoConfig, extraPath) {

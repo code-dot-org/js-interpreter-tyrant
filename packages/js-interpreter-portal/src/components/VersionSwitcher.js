@@ -11,6 +11,7 @@ import {
   Card,
   CardHeader,
   CardContent,
+  Button,
 } from 'material-ui';
 import styled from 'styled-components';
 
@@ -47,38 +48,64 @@ CommitText.propTypes = {
   }).isRequired,
 };
 
-function CommitList({current, commits, onClickCommit}) {
-  return (
-    <CardContent style={{padding: 0}}>
-      <List dense>
-        {commits.map(({version, commit}) =>
-          <ListItem
-            key={commit.sha}
-            button
-            divider
-            disableRipple
-            onClick={() => onClickCommit(commit.sha)}
-          >
-            <ListItemText
-              primary={
-                <span>
-                  {commit.sha === current && <strong>(current)</strong>}{' '}
-                  {version}
-                </span>
-              }
-              secondary={<CommitText commit={commit} />}
-            />
-          </ListItem>
-        )}
-      </List>
-    </CardContent>
-  );
+class CommitList extends Component {
+  static propTypes = {
+    commits: PropTypes.array.isRequired,
+    current: PropTypes.string.isRequired,
+    onClickCommit: PropTypes.func.isRequired,
+    onClickMerge: PropTypes.func,
+  };
+
+  static defaultProps = {
+    onClickMerge: null,
+  };
+
+  state = {
+    numToShow: 30,
+  };
+
+  onClickShowMore = () => {
+    this.setState({numToShow: this.state.numToShow + 30});
+  };
+
+  render() {
+    const {onClickMerge, current, commits, onClickCommit} = this.props;
+    return (
+      <CardContent style={{padding: 0}}>
+        <List dense>
+          {commits.slice(0, this.state.numToShow).map(({version, commit}) =>
+            <ListItem
+              key={commit.sha}
+              button
+              divider
+              disableRipple
+              onClick={() => onClickCommit(commit.sha)}
+            >
+              <ListItemText
+                primary={
+                  <span>
+                    {commit.sha === current && <strong>(current)</strong>}{' '}
+                    {version}
+                    {onClickMerge &&
+                      <Button
+                        disabled={commit.merged}
+                        onClick={() => onClickMerge(commit.sha)}
+                      >
+                        Merge
+                      </Button>}
+                  </span>
+                }
+                secondary={<CommitText commit={commit} />}
+              />
+            </ListItem>
+          )}
+        </List>
+        {this.state.numToShow < commits.length &&
+          <Button onClick={this.onClickShowMore}>Show More</Button>}
+      </CardContent>
+    );
+  }
 }
-CommitList.propTypes = {
-  commits: PropTypes.array.isRequired,
-  current: PropTypes.string.isRequired,
-  onClickCommit: PropTypes.func.isRequired,
-};
 
 export default class VersionSwitcher extends Component {
   static propTypes = {};
@@ -106,6 +133,10 @@ export default class VersionSwitcher extends Component {
 
   changeTab = (event, value) => {
     this.setState({tab: value});
+  };
+
+  onClickMerge = sha => {
+    Connection.MasterVersionManager.mergeCommit(sha);
   };
 
   render() {
@@ -142,6 +173,7 @@ export default class VersionSwitcher extends Component {
             {this.state.tab === 'upstream' &&
               <CommitList
                 commits={this.state.upstream}
+                onClickMerge={this.onClickMerge}
                 current={this.state.currentVersion.sha}
                 onClickCommit={this.selectVersion}
               />}

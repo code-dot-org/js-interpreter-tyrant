@@ -25,4 +25,10 @@ export default class MasterVersionManager {
       this.io.to(socketId).emit('SlaveVersionManager.selectVersion', version);
     });
   };
+
+  mergeCommit = async sha => {
+    this.backendManager.backends.forEach(({socketId}) => {
+      this.io.to(socketId).emit('SlaveVersionManager.mergeCommit', sha);
+    });
+  };
 }
