@@ -9,49 +9,93 @@ import {
   Card,
   CardHeader,
   CardContent,
+  FormControl,
+  InputLabel,
+  withStyles,
 } from 'material-ui';
 import Connection from '../client/Connection';
 import {ClientEvents} from '../constants';
+
+const NumberDropdown = withStyles({
+  formControl: {
+    minWidth: 200,
+    display: 'block',
+  },
+})(function NumberDropdown({
+  start,
+  count,
+  id,
+  value,
+  onChange,
+  label,
+  classes,
+}) {
+  const items = [];
+  for (let i = start; i < start + count; i++) {
+    items.push(
+      <MenuItem key={i} value={i}>
+        {i}
+      </MenuItem>
+    );
+  }
+  return (
+    <FormControl className={classes.formControl}>
+      <InputLabel htmlFor={id}>
+        {label}
+      </InputLabel>
+      <Select value={value} onChange={onChange} input={<Input id={id} />}>
+        {items}
+      </Select>
+    </FormControl>
+  );
+});
 
 export default class SlavesCard extends Component {
   static propTypes = {};
 
   state = {
     slaves: [],
+    numThreads: 1,
   };
 
   async componentDidMount() {
-    const slaves = await Connection.SlaveManager.getBackends();
-    this.setState({slaves});
-    Connection.on(ClientEvents.SLAVE_MANAGER_STATE_CHANGE, slaves =>
-      this.setState({slaves})
+    const state = await Connection.SlaveManager.getState();
+    console.log('got state', state);
+    this.setState(state);
+    Connection.on(ClientEvents.SLAVE_MANAGER_STATE_CHANGE, state =>
+      this.setState(state)
     );
   }
 
   onChangeNumSlaves = async ({target: {value}}) => {
-    await Connection.SlaveManager.setNumBackends({numBackends: value});
+    await Connection.SlaveManager.setConfig({numBackends: value});
+  };
+
+  onChangeNumThreads = async ({target: {value}}) => {
+    await Connection.SlaveManager.setConfig({numThreads: value});
   };
 
   render() {
-    const menuItems = [];
-    for (let i = 1; i <= 8; i++) {
-      menuItems.push(
-        <MenuItem key={i} value={i}>
-          {i}
-        </MenuItem>
-      );
-    }
     return (
       <Card>
         <CardHeader title="Slaves" />
         <CardContent>
-          <Select
+          <NumberDropdown
+            label="Num Slaves"
+            start={1}
+            count={8}
+            id="num-slaves"
             value={this.state.slaves.length}
             onChange={this.onChangeNumSlaves}
-            input={<Input id="num-slaves" />}
-          >
-            {menuItems}
-          </Select>
+          />
+          <NumberDropdown
+            label="Num Threads"
+            start={1}
+            count={8}
+            id="num-threads"
+            value={this.state.numThreads}
+            onChange={this.onChangeNumThreads}
+          />
         </CardContent>
         <CardContent style={{padding: 0}}>
           <List>

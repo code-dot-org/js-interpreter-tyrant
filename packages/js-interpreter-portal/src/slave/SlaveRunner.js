@@ -7,6 +7,7 @@ import {objectToArgs} from '../util';
 @RPCInterface
 export default class SlaveRunner {
   eventId = 1;
+  numThreads = 1;
 
   constructor(socket, versionManager) {
     this.socket = socket;
@@ -23,6 +24,10 @@ export default class SlaveRunner {
       data,
     });
 
+  setNumThreads = async ({numThreads}) => {
+    this.numThreads = numThreads;
+  };
+
   execute = async ({splitIndex, splitInto}) => {
     const args = objectToArgs(
       {
@@ -36,13 +41,13 @@ export default class SlaveRunner {
         noExit: true,
         diff: true,
         progress: true,
-        threads: 1,
+        threads: this.numThreads,
         hostPath: this.versionManager.getLocalRepoPath(
           Repos.CODE_DOT_ORG,
           'bin/run.js'
         ),
       },
-      ['isNaN', 'NaN', 'Number'].map(dir =>
+      ['String'].map(dir =>
         this.versionManager.getLocalRepoPath(
           Repos.CODE_DOT_ORG,
           `tyrant/test262/test/built-ins/${dir}/*.js`
