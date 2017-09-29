@@ -125,24 +125,27 @@ export default class VersionSwitcher extends Component {
               </p>}
             {this.state.updating && <LinearProgress />}
           </CardContent>}
-        {this.state.tab === 'tags' &&
-          <CommitList
-            commits={this.state.versions}
-            current={this.state.currentVersion.sha}
-            onClickCommit={this.selectVersion}
-          />}
-        {this.state.tab === 'commits' &&
-          <CommitList
-            commits={this.state.commits}
-            current={this.state.currentVersion.sha}
-            onClickCommit={this.selectVersion}
-          />}
-        {this.state.tab === 'upstream' &&
-          <CommitList
-            commits={this.state.upstream}
-            current={this.state.currentVersion.sha}
-            onClickCommit={this.selectVersion}
-          />}
+        {this.state.currentVersion &&
+          <div>
+            {this.state.tab === 'tags' &&
+              <CommitList
+                commits={this.state.versions}
+                current={this.state.currentVersion.sha}
+                onClickCommit={this.selectVersion}
+              />}
+            {this.state.tab === 'commits' &&
+              <CommitList
+                commits={this.state.commits}
+                current={this.state.currentVersion.sha}
+                onClickCommit={this.selectVersion}
+              />}
+            {this.state.tab === 'upstream' &&
+              <CommitList
+                commits={this.state.upstream}
+                current={this.state.currentVersion.sha}
+                onClickCommit={this.selectVersion}
+              />}
+          </div>}
       </Card>
     );
   }
