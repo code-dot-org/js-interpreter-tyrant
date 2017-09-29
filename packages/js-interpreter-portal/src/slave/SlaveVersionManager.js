@@ -1,6 +1,14 @@
 import path from 'path';
 import fs from 'fs';
-import Git, {Tag, Repository, Checkout} from 'nodegit';
+import Git, {
+  Tag,
+  Repository,
+  Checkout,
+  Remote,
+  Merge,
+  Signature,
+  Revwalk,
+} from 'nodegit';
 import ChildProcess from 'child_process';
 import {promisify} from 'util';
 import rimraf from 'rimraf';
@@ -15,6 +23,10 @@ export const Repos = {
     gitUrl: 'https://github.com/code-dot-org/JS-Interpreter.git',
     name: 'code-dot-org',
   },
+  NeilFraser: {
+    gitUrl: 'https://github.com/NeilFraser/JS-Interpreter.git',
+    name: 'NeilFraser',
+  },
 };
 
 function commitToJSON(commit) {
@@ -22,6 +34,8 @@ function commitToJSON(commit) {
     sha: commit.sha(),
     summary: commit.summary(),
     time: commit.timeMs(),
+    author: commit.author().toString(),
+    committer: commit.committer().toString(),
   };
 }
 
@@ -39,6 +53,7 @@ export default class SlaveVersionManager {
       updating: false,
       backendId: this.backendId,
     };
+    this.repoConfig = Repos.CODE_DOT_ORG;
   }
 
   setClientState(newState) {
@@ -54,13 +69,32 @@ export default class SlaveVersionManager {
     this.setClientState({lastLog: msg});
   }
 
+  ensureRemotes = async () => {
+    const remotes = await Remote.list(this.repo);
+    await Promise.all(
+      Object.keys(Repos).map(async key => {
+        const remoteRepoConfig = Repos[key];
+        if (
+          remoteRepoConfig !== this.repoConfig &&
+          !remotes.includes(remoteRepoConfig.name)
+        ) {
+          await Remote.create(
+            this.repo,
+            remoteRepoConfig.name,
+            remoteRepoConfig.gitUrl
+          );
+        }
+      })
+    );
+    await this.repo.fetchAll();
+  };
+
   cloneRepo = async () => {
-    const repoConfig = Repos.CODE_DOT_ORG;
-    const localPath = this.getLocalRepoPath(repoConfig);
+    const localPath = this.getLocalRepoPath(this.repoConfig);
     this.log('deleting old repo');
     await rmdir(localPath);
     this.log('cloning repo...');
-    this.repo = await Git.Clone(repoConfig.gitUrl, localPath);
+    this.repo = await Git.Clone(this.repoConfig.gitUrl, localPath);
     this.log('running yarn...');
     const cmds = [
       'yarn',
@@ -76,6 +110,32 @@ export default class SlaveVersionManager {
     this.log('done');
   };
 
+  getCommitLog = async head => {
+    if (!head) {
+      head = await this.repo.getMasterCommit();
+    }
+    const jsonCommits = [];
+    const queue = [head];
+    while (queue.length > 0 && jsonCommits.length < 100) {
+      const commit = queue.shift();
+      jsonCommits.push(commitToJSON(commit));
+      const parents = await commit.getParents(1);
+      parents.forEach(parent => queue.push(parent));
+    }
+    jsonCommits.sort((a, b) => b.time - a.time);
+    return jsonCommits;
+  };
+
+  mergeRemote = async remote => {
+    console.log('Attempting merge...');
+    await this.repo.mergeBranches(
+      'master',
+      `${remote}/master`,
+      Signature.now('Tyrant', 'paul@code.org'),
+      Merge.PREFERENCE.NONE
+    );
+  };
+
   async getVersions() {
     const versions = await Tag.list(this.repo);
     const newVersions = [];
@@ -87,6 +147,7 @@ export default class SlaveVersionManager {
         commit: commitToJSON(commit),
       });
     }
+    newVersions.sort((a, b) => b.commit.time - a.commit.time);
     return newVersions;
   }
 
@@ -98,10 +159,19 @@ export default class SlaveVersionManager {
       await this.cloneRepo();
       head = await this.repo.getHeadCommit();
     }
+    await this.ensureRemotes();
+    let commits = await this.getCommitLog();
+    let upstream = await this.getCommitLog(
+      await this.repo.getReferenceCommit('refs/remotes/NeilFraser/master')
+    );
+    commits = commits.map(commit => ({version: commit.summary, commit}));
+    upstream = upstream.map(commit => ({version: commit.summary, commit}));
     const currentVersion = commitToJSON(head);
     this.setClientState({
       currentVersion,
       versions,
+      commits,
+      upstream,
       updating: false,
     });
     return this.clientState;
@@ -109,8 +179,7 @@ export default class SlaveVersionManager {
 
   update = async () => {
     this.setClientState({updating: true});
-    const repoConfig = Repos.CODE_DOT_ORG;
-    const localPath = this.getLocalRepoPath(repoConfig);
+    const localPath = this.getLocalRepoPath(this.repoConfig);
     if (fs.existsSync(localPath)) {
       this.repo = await Repository.open(localPath);
     } else {
@@ -119,16 +188,17 @@ export default class SlaveVersionManager {
     return await this.getClientState();
   };
 
-  selectVersion = async version => {
-    const tag = await this.repo.getTagByName(version);
-    const head = await this.repo.getCommit(tag.targetId());
+  selectVersion = async sha => {
+    //    const tag = await this.repo.getTagByName(version);
+    //    const sha = tag.targetId();
+    const head = await this.repo.getCommit(sha);
     await Checkout.tree(this.repo, head, {
       checkoutStrategy: Checkout.STRATEGY.FORCE,
     });
     this.repo.setHeadDetached(
-      tag.targetId(),
+      sha,
       this.repo.defaultSignature,
-      'Checkout: HEAD ' + tag.targetId()
+      'Checkout: HEAD ' + sha
     );
     const currentVersion = {
       sha: head.sha(),
