@@ -39,7 +39,7 @@ function commitToJSON(commit) {
   };
 }
 
-@RPCInterface
+@RPCInterface()
 export default class SlaveVersionManager {
   repo = null;
 
@@ -54,14 +54,6 @@ export default class SlaveVersionManager {
       backendId: this.backendId,
     };
     this.repoConfig = Repos.CODE_DOT_ORG;
-  }
-
-  setClientState(newState) {
-    this.clientState = {...this.clientState, ...newState};
-    this.socket.emit(
-      ClientEvents.VERSION_MANAGER_STATE_CHANGE,
-      this.clientState
-    );
   }
 
   log(msg) {
@@ -153,7 +145,14 @@ export default class SlaveVersionManager {
     return newVersions;
   }
 
-  getClientState = async () => {
+  update = async () => {
+    this.setClientState({updating: true});
+    const localPath = this.getLocalRepoPath(this.repoConfig);
+    if (fs.existsSync(localPath)) {
+      this.repo = await Repository.open(localPath);
+    } else {
+      await this.cloneRepo();
+    }
     const versions = await this.getVersions();
     let head = await this.repo.getHeadCommit();
     if (!head) {
@@ -184,17 +183,6 @@ export default class SlaveVersionManager {
       updating: false,
     });
     return this.clientState;
-  };
-
-  update = async () => {
-    this.setClientState({updating: true});
-    const localPath = this.getLocalRepoPath(this.repoConfig);
-    if (fs.existsSync(localPath)) {
-      this.repo = await Repository.open(localPath);
-    } else {
-      await this.cloneRepo();
-    }
-    return await this.getClientState();
   };
 
   selectVersion = async sha => {

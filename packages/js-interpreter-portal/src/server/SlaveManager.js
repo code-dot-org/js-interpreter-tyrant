@@ -1,11 +1,10 @@
 import child_process from 'child_process';
 import RPCInterface from './RPCInterface';
 import Heroku from 'heroku-client';
-import {ClientEvents} from '../constants';
 
-@RPCInterface
+@RPCInterface({type: 'master'})
 export default class SlaveManager {
-  state = {
+  clientState = {
     slaves: [],
     numThreads: 1,
   };
@@ -18,13 +17,6 @@ export default class SlaveManager {
     }
   }
 
-  setState(newState) {
-    this.state = {...this.state, ...newState};
-    this.io
-      .to('clients')
-      .emit(ClientEvents.SLAVE_MANAGER_STATE_CHANGE, this.state);
-  }
-
   provisionBackend(id) {
     child_process.spawn('yarn', ['run', 'startSlave'], {
       env: {
@@ -33,32 +25,32 @@ export default class SlaveManager {
       },
       stdio: 'inherit',
     });
-    this.setState({slaves: [...this.state.slaves, {id}]});
+    this.setClientState({slaves: [...this.clientState.slaves, {id}]});
   }
 
   getBackend(id) {
-    return this.state.slaves.find(b => b.id === id);
+    return this.clientState.slaves.find(b => b.id === id);
   }
 
   get backends() {
-    return this.state.slaves;
+    return this.clientState.slaves;
   }
 
-  getBackends = async () => this.state.slaves;
-  getState = async () => this.state;
+  getBackends = async () => this.clientState.slaves;
 
   registerBackend = async ({id}, socketId) => {
-    console.log('registering backend', id);
     const backend = this.getBackend(id);
     if (backend) {
       backend.socketId = socketId;
-      this.setState({
-        slaves: this.state.slaves.map(
+      this.setClientState({
+        slaves: this.clientState.slaves.map(
           s => (s.id === id ? {...s, socketId} : s)
         ),
       });
     } else {
-      this.setState({slaves: [...this.state.slaves, {id, socketId}]});
+      this.setClientState({
+        slaves: [...this.clientState.slaves, {id, socketId}],
+      });
     }
   };
 
@@ -67,10 +59,10 @@ export default class SlaveManager {
       await this.setNumBackends(numBackends);
     }
     if (numThreads) {
-      this.state.slaves.forEach(({socketId}) => {
+      this.clientState.slaves.forEach(({socketId}) => {
         this.io.to(socketId).emit('SlaveRunner.setNumThreads', {numThreads});
       });
-      this.setState({numThreads});
+      this.setClientState({numThreads});
     }
   };
 
@@ -85,7 +77,7 @@ export default class SlaveManager {
         {body: {quantity: numBackends}}
       );
     }
-    for (let i = this.state.slaves.length; i < numBackends; i++) {
+    for (let i = this.clientState.slaves.length; i < numBackends; i++) {
       this.provisionBackend(`slave-${i}`);
     }
   };

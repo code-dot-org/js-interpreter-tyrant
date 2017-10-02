@@ -59,12 +59,10 @@ export default class SlavesCard extends Component {
   };
 
   async componentDidMount() {
-    const state = await Connection.SlaveManager.getState();
+    const state = await Connection.SlaveManager.getClientState();
     console.log('got state', state);
     this.setState(state);
-    Connection.on(ClientEvents.SLAVE_MANAGER_STATE_CHANGE, state =>
-      this.setState(state)
-    );
+    Connection.SlaveManager.onClientStateChange(state => this.setState(state));
   }
 
   onChangeNumSlaves = async ({target: {value}}) => {

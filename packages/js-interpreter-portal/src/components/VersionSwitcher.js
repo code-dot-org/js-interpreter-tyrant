@@ -121,7 +121,7 @@ export default class VersionSwitcher extends Component {
   };
 
   async componentDidMount() {
-    Connection.on(ClientEvents.VERSION_MANAGER_STATE_CHANGE, newState => {
+    Connection.SlaveVersionManager.onClientStateChange(newState => {
       this.setState(newState);
     });
     await Connection.MasterVersionManager.update();

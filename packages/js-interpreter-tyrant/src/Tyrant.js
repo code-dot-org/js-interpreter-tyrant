@@ -93,14 +93,16 @@ export default class Tyrant {
     );
     this.numTries = 1;
     this.OLD_RESULTS_BY_KEY = this.argv.diff
-      ? this.getResultsByKey(
-          readResultsFromFile(
-            typeof this.argv.diff === 'string'
-              ? this.argv.diff
-              : this.argv.savedResults
-          )
-        )
+      ? this.getResultsByKey(this.getSavedResults())
       : {};
+  }
+
+  getSavedResults() {
+    return readResultsFromFile(
+      typeof this.argv.diff === 'string'
+        ? this.argv.diff
+        : this.argv.savedResults
+    );
   }
 
   setEventCallback(cb) {

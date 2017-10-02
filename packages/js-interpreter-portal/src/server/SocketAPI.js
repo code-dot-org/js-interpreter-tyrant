@@ -1,5 +1,5 @@
 import MasterVersionManager from './MasterVersionManager';
-import {EventNames} from './RPCInterface';
+import {EventNames, ClassNames} from './RPCInterface';
 import SlaveManager from './SlaveManager';
 import MasterRunner from './MasterRunner';
 import {ClientEvents} from '../constants';
@@ -8,6 +8,9 @@ export default class SocketAPI {
   handlers = {
     getEventNames: callback => {
       callback(EventNames);
+    },
+    getClassNames: callback => {
+      callback(ClassNames);
     },
   };
 
@@ -40,11 +43,13 @@ export default class SocketAPI {
     });
     if (socket.handshake.query.type === 'backend') {
       socket.join('backends');
-      Object.keys(ClientEvents).forEach(clientEvent =>
-        socket.on(clientEvent, (...args) =>
-          socket.broadcast.to('clients').emit(clientEvent, ...args)
-        )
-      );
+      Object.keys(ClientEvents)
+        .concat(ClassNames.map(cls => `${cls}.STATE_CHANGE`))
+        .forEach(clientEvent => {
+          socket.on(clientEvent, (...args) => {
+            socket.broadcast.to('clients').emit(clientEvent, ...args);
+          });
+        });
     } else {
       socket.join('clients');
     }

@@ -4,7 +4,7 @@ import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
 import RPCInterface from '../server/RPCInterface';
 import {objectToArgs} from '../util';
 
-@RPCInterface
+@RPCInterface()
 export default class SlaveRunner {
   eventId = 1;
   numThreads = 1;
@@ -28,7 +28,11 @@ export default class SlaveRunner {
     this.numThreads = numThreads;
   };
 
-  execute = async ({splitIndex, splitInto}) => {
+  getSavedResults = async () => {
+    return this.getTyrant().getSavedResults();
+  };
+
+  getTyrant({splitIndex, splitInto}) {
     const args = objectToArgs(
       {
         root: this.versionManager.getLocalRepoPath(
@@ -55,7 +59,11 @@ export default class SlaveRunner {
       )
     );
     console.log('running tyrant with', args.join(' '));
-    new Tyrant(args)
+    return new Tyrant(args);
+  }
+
+  execute = async ({splitIndex, splitInto}) => {
+    this.getTyrant({splitIndex, splitInto})
       .setEventCallback((...args) => this._onTyrantEvent(splitIndex, ...args))
       .execute();
   };

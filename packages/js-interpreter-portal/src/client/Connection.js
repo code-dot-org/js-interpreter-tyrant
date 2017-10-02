@@ -13,6 +13,15 @@ class Connection {
   initClient({url, callback}) {
     this.conn = SocketIOClient.connect(url, {reconnect: true});
     this.conn.on('reconnect_attempt', this.onReconnectAttempt);
+    this.conn.emit('getClassNames', classNames => {
+      classNames.forEach(cls => {
+        if (!this[cls]) {
+          this[cls] = {};
+        }
+        this[cls].onClientStateChange = func =>
+          this.on(`${cls}.STATE_CHANGE`, func);
+      });
+    });
     this.conn.emit('getEventNames', eventNames => {
       eventNames.forEach(eventName => {
         const [cls, func] = eventName.split('.');

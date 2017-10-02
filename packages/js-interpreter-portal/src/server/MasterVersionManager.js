@@ -1,7 +1,10 @@
 import RPCInterface from './RPCInterface';
+import SlaveVersionManager from '../slave/SlaveVersionManager';
 
-@RPCInterface
+@RPCInterface()
 export default class MasterVersionManager {
+  static SlaveClass = SlaveVersionManager;
+
   clientState = {
     lastLog: '',
     currentVersion: null,
