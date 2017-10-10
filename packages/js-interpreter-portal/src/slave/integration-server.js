@@ -1,7 +1,7 @@
 import yargs from 'yargs';
 import uuid from 'uuid/v4';
 
-import Backend from './Backend';
+import Slave from './Slave';
 import {MASTER_PORT} from '../server/constants';
 import Connection from '../client/Connection';
 
@@ -12,7 +12,7 @@ if (process.env.HEROKU_APP_NAME) {
 }
 const ARGS = yargs
   .usage(`Usage: $0 [options]`)
-  .describe('id', 'backend id')
+  .describe('id', 'slave id')
   .nargs('id', 1)
   .default('id', process.env.SLAVE_ID || process.env.DYNO || uuid())
   .describe('master', 'master server to contact')
@@ -21,8 +21,8 @@ const ARGS = yargs
   .help('h')
   .alias('h', 'help');
 
-console.log('Starting up backend');
+console.log('Starting up slave');
 Connection.initClient({
-  url: ARGS.argv.master + '?type=backend',
-  callback: socket => new Backend(socket, ARGS.argv),
+  url: ARGS.argv.master + '?type=slave',
+  callback: socket => new Slave(socket, ARGS.argv),
 });

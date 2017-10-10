@@ -12,7 +12,20 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
     if (!type) {
       type = 'slave';
     }
-    return class WrappedClass extends cls {
+
+    class WrappedMasterClass extends cls {
+      constructor(io, slaveManager, ...args) {
+        super(io, slaveManager, ...args);
+        this.io = io;
+        this.slaveManager = slaveManager;
+      }
+    }
+
+    class WrappedSlaveClass extends cls {}
+
+    return class WrappedClass extends (type === 'slave'
+      ? WrappedSlaveClass
+      : WrappedMasterClass) {
       setClientState(stateUpdates) {
         if (!this.clientState) {
           throw new Error(

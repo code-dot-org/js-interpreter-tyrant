@@ -11,16 +11,15 @@ export default class SlaveRunner {
 
   constructor(socket, versionManager) {
     this.socket = socket;
-    socket.on('Runner.execute', () => console.log('HEOY'));
     this.versionManager = versionManager;
   }
 
-  _onTyrantEvent = (backendId, eventName, data) =>
+  _onTyrantEvent = (slaveId, eventName, data) =>
     this.socket.emit(ClientEvents.TYRANT_EVENT, {
       timestamp: new Date().getTime(),
       eventName,
       eventId: this.eventId++,
-      backendId,
+      slaveId,
       data,
     });
 
@@ -28,11 +27,15 @@ export default class SlaveRunner {
     this.numThreads = numThreads;
   };
 
+  saveResults = async results => {
+    this.getTyrant().saveResults(results);
+  };
+
   getSavedResults = async () => {
     return this.getTyrant().getSavedResults();
   };
 
-  getTyrant({splitIndex, splitInto}) {
+  getTyrant({splitIndex, splitInto, tests} = {}) {
     const args = objectToArgs(
       {
         root: this.versionManager.getLocalRepoPath(
@@ -51,19 +54,23 @@ export default class SlaveRunner {
           'bin/run.js'
         ),
       },
-      ['String'].map(dir =>
-        this.versionManager.getLocalRepoPath(
-          Repos.CODE_DOT_ORG,
-          `tyrant/test262/test/built-ins/${dir}/*.js`
-        )
-      )
+      tests
+        ? tests.map(path =>
+            this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG, path)
+          )
+        : []
+      //['String'].map(dir =>
+      //  this.versionManager.getLocalRepoPath(
+      //    Repos.CODE_DOT_ORG,
+      //    `tyrant/test262/test/built-ins/${dir}/*.js`
+      //  )
+      //)
     );
-    console.log('running tyrant with', args.join(' '));
     return new Tyrant(args);
   }
 
-  execute = async ({splitIndex, splitInto}) => {
-    this.getTyrant({splitIndex, splitInto})
+  execute = async ({splitIndex, splitInto, tests}) => {
+    this.getTyrant({splitIndex, splitInto, tests})
       .setEventCallback((...args) => this._onTyrantEvent(splitIndex, ...args))
       .execute();
   };

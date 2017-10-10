@@ -1,26 +1,26 @@
 import RPCInterface from './RPCInterface';
 import SlaveRunner from '../slave/SlaveRunner';
 
-@RPCInterface()
+@RPCInterface({type: 'master'})
 export default class MasterRunner {
   static SlaveClass = SlaveRunner;
 
-  constructor(io, backendManager) {
-    this.io = io;
-    this.backendManager = backendManager;
-  }
+  getSavedResults = () =>
+    this.slaveManager.emitPrimarySlave('SlaveRunner.getSavedResults');
 
-  getSavedResults = async () => {
-    this.io
-      .to(this.backendManager.backends[0].socketId)
-      .emit('SlaveRunner.getSavedResults');
+  saveResults = async results => {
+    await this.slaveManager.emitPrimarySlave(
+      'SlaveRunner.saveResults',
+      results
+    );
   };
 
-  execute = async () => {
-    this.backendManager.backends.forEach(({socketId}, splitIndex, backends) => {
-      this.io.to(socketId).emit('SlaveRunner.execute', {
+  execute = async ({tests}) => {
+    this.slaveManager.slaves.forEach((slave, splitIndex, slaves) => {
+      this.slaveManager.getSocketFor(slave).emit('SlaveRunner.execute', {
         splitIndex,
-        splitInto: backends.length,
+        splitInto: slaves.length,
+        tests,
       });
     });
   };

@@ -17,17 +17,14 @@ export default class SocketAPI {
   constructor(io) {
     this.io = io;
     this.sockets = {};
-    this.backendManager = new SlaveManager(this.io);
-    this.versionManager = new MasterVersionManager(
-      this.io,
-      this.backendManager
-    );
-    this.masterRunner = new MasterRunner(this.io, this.backendManager);
+    this.slaveManager = new SlaveManager(this.io);
+    this.versionManager = new MasterVersionManager(this.io, this.slaveManager);
+    this.masterRunner = new MasterRunner(this.io, this.slaveManager);
 
     this.io.on('connection', this.onConnection);
-    if (!this.backendManager.heroku) {
+    if (!this.slaveManager.heroku) {
       // running locally. Go ahead and start up a slave
-      this.backendManager.setConfig({numBackends: 1});
+      this.slaveManager.setConfig({numSlaves: 1});
     }
   }
 
@@ -35,14 +32,14 @@ export default class SocketAPI {
 
   onConnection = socket => {
     this.sockets[socket.id] = socket;
-    this.backendManager.listenTo(socket);
+    this.slaveManager.listenTo(socket);
     this.versionManager.listenTo(socket);
     this.masterRunner.listenTo(socket);
     Object.keys(this.handlers).forEach(eventName => {
       socket.on(eventName, this.getEventHandler(eventName));
     });
-    if (socket.handshake.query.type === 'backend') {
-      socket.join('backends');
+    if (socket.handshake.query.type === 'slave') {
+      socket.join('slaves');
       Object.keys(ClientEvents)
         .concat(ClassNames.map(cls => `${cls}.STATE_CHANGE`))
         .forEach(clientEvent => {

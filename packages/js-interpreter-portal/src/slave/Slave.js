@@ -3,7 +3,7 @@ import Connection from '../client/Connection';
 import SlaveVersionManager from './SlaveVersionManager';
 import SlaveRunner from './SlaveRunner';
 
-export default class Backend {
+export default class Slave {
   constructor(socket, {id, master}) {
     this.id = id;
     this.master = master;
@@ -12,8 +12,8 @@ export default class Backend {
     this.runner = new SlaveRunner(socket, this.versionManager);
     this.runner.listenTo(socket);
     this.versionManager.listenTo(socket);
-    console.log('registering backend', this.id, 'with master');
-    Connection.SlaveManager.registerBackend({id: this.id});
+    console.log('registering slave', this.id, 'with master');
+    Connection.SlaveManager.registerSlave({id: this.id});
     this.versionManager.update();
   }
 }

@@ -17,7 +17,7 @@ export default class SlaveManager {
     }
   }
 
-  provisionBackend(id) {
+  provisionSlave(id) {
     child_process.spawn('yarn', ['run', 'startSlave'], {
       env: {
         ...process.env,
@@ -28,20 +28,42 @@ export default class SlaveManager {
     this.setClientState({slaves: [...this.clientState.slaves, {id}]});
   }
 
-  getBackend(id) {
+  getSlave(id) {
     return this.clientState.slaves.find(b => b.id === id);
   }
 
-  get backends() {
+  get slaves() {
     return this.clientState.slaves;
   }
 
-  getBackends = async () => this.clientState.slaves;
+  getSlaves = async () => this.clientState.slaves;
 
-  registerBackend = async ({id}, socketId) => {
-    const backend = this.getBackend(id);
-    if (backend) {
-      backend.socketId = socketId;
+  getSocketIdx(index) {
+    return this.io.sockets.connected[this.slaves[index].socketId];
+  }
+
+  getSocketFor(slave) {
+    return this.io.sockets.connected[slave.socketId];
+  }
+
+  async emitPrimarySlave(event, ...args) {
+    return await new Promise(resolve =>
+      this.getSocketIdx(0).emit(event, ...args, resolve)
+    );
+  }
+
+  async emitToAllSlaves(event, ...args) {
+    return await Promise.all(
+      this.slaves.map(
+        async slave => await this.getSocketFor(slave).emit(event, ...args)
+      )
+    );
+  }
+
+  registerSlave = async ({id}, socketId) => {
+    const slave = this.getSlave(id);
+    if (slave) {
+      slave.socketId = socketId;
       this.setClientState({
         slaves: this.clientState.slaves.map(
           s => (s.id === id ? {...s, socketId} : s)
@@ -54,9 +76,9 @@ export default class SlaveManager {
     }
   };
 
-  setConfig = async ({numBackends, numThreads}) => {
-    if (numBackends) {
-      await this.setNumBackends(numBackends);
+  setConfig = async ({numSlaves, numThreads}) => {
+    if (numSlaves) {
+      await this.setNumSlaves(numSlaves);
     }
     if (numThreads) {
       this.clientState.slaves.forEach(({socketId}) => {
@@ -66,7 +88,7 @@ export default class SlaveManager {
     }
   };
 
-  setNumBackends = async numBackends => {
+  setNumSlaves = async numSlaves => {
     if (this.heroku) {
       console.log(
         'sending patch request to',
@@ -74,11 +96,11 @@ export default class SlaveManager {
       );
       return await this.heroku.patch(
         `/apps/${process.env.HEROKU_APP_NAME}/formation/worker`,
-        {body: {quantity: numBackends}}
+        {body: {quantity: numSlaves}}
       );
     }
-    for (let i = this.clientState.slaves.length; i < numBackends; i++) {
-      this.provisionBackend(`slave-${i}`);
+    for (let i = this.clientState.slaves.length; i < numSlaves; i++) {
+      this.provisionSlave(`slave-${i}`);
     }
   };
 }

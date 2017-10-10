@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment-mini';
 import {
+  Typography,
   Tabs,
   Tab,
   LinearProgress,
@@ -11,7 +12,10 @@ import {
   Card,
   CardHeader,
   CardContent,
+  CardActions,
   Button,
+  Grid,
+  Paper,
 } from 'material-ui';
 import styled from 'styled-components';
 
@@ -29,13 +33,15 @@ const Commit = styled.span`
 function CommitText({commit: {sha, summary, time, author, committer}}) {
   time = moment(new Date(time));
   return (
-    <Commit>
-      <span>{sha.slice(0, 6)}</span> {summary}{' '}
+    <span>
+      <span>
+        {sha.slice(0, 6)}
+      </span>
       <span>
         {author} {committer && committer !== author && committer}{' '}
         {time.format('ll')} {time.format('LT')}
       </span>
-    </Commit>
+    </span>
   );
 }
 CommitText.propTypes = {
@@ -73,32 +79,80 @@ class CommitList extends Component {
     return (
       <CardContent style={{padding: 0}}>
         <List dense>
-          {commits.slice(0, this.state.numToShow).map(({version, commit}) =>
-            <ListItem
-              key={commit.sha}
-              button
-              divider
-              disableRipple
-              onClick={() => onClickCommit(commit.sha)}
-            >
-              <ListItemText
-                primary={
-                  <span>
-                    {commit.sha === current && <strong>(current)</strong>}{' '}
-                    {version}
-                    {onClickMerge &&
-                      <Button
-                        disabled={commit.merged}
-                        onClick={() => onClickMerge(commit.sha)}
-                      >
-                        Merge
-                      </Button>}
-                  </span>
-                }
-                secondary={<CommitText commit={commit} />}
-              />
-            </ListItem>
-          )}
+          {commits
+            .slice(0, this.state.numToShow)
+            .map(
+              ({
+                version,
+                commit: {
+                  sha,
+                  summary,
+                  time,
+                  author,
+                  committer,
+                  merged,
+                  upstreamName,
+                },
+              }) =>
+                <ListItem key={sha} divider>
+                  <Grid container>
+                    <Grid item xs={sha === current ? 12 : 8}>
+                      <div>
+                        {sha === current && <strong>(current)</strong>}{' '}
+                        <a
+                          href={`https://github.com/${upstreamName}/JS-Interpreter/commit/${sha}`}
+                          target="_blank"
+                        >
+                          {sha.slice(0, 6)}
+                        </a>{' '}
+                        {version}
+                      </div>
+                      <Typography type="caption">
+                        {author}{' '}
+                        {committer &&
+                          committer !== author &&
+                          <span>
+                            (Commited by {committer})
+                          </span>}
+                        <div>
+                          {moment(time).format('ll')}{' '}
+                          {moment(time).format('LT')}
+                        </div>
+                      </Typography>
+                    </Grid>
+                    {sha !== current &&
+                      <Grid item xs={4}>
+                        <Grid
+                          container
+                          justify="space-around"
+                          align="center"
+                          spacing={8}
+                        >
+                          <Grid item>
+                            <Button
+                              raised
+                              color="primary"
+                              onClick={() => onClickCommit(sha)}
+                            >
+                              Checkout
+                            </Button>
+                          </Grid>
+                          {onClickMerge &&
+                            <Grid item>
+                              <Button
+                                raised
+                                color="primary"
+                                disabled={merged}
+                                onClick={() => onClickMerge(sha)}
+                              >
+                                Merge
+                              </Button>
+                            </Grid>}
+                        </Grid>
+                      </Grid>}
+                  </Grid>
+                </ListItem>
+            )}
         </List>
         {this.state.numToShow < commits.length &&
           <Button onClick={this.onClickShowMore}>Show More</Button>}
@@ -131,53 +185,80 @@ export default class VersionSwitcher extends Component {
     Connection.MasterVersionManager.selectVersion(sha);
   };
 
-  changeTab = (event, value) => {
-    this.setState({tab: value});
+  changeTab = (event, tab) => {
+    this.setState({tab});
   };
 
   onClickMerge = sha => {
     Connection.MasterVersionManager.mergeCommit(sha);
   };
 
+  onClickPushUpstream = () => {
+    Connection.MasterVersionManager.pushUpstream();
+  };
+
+  onClickReset = () => {
+    Connection.MasterVersionManager.update({reset: true});
+  };
+
   render() {
+    const upstreamCommits = this.state.upstream
+      .filter(({commit}) => !commit.merged)
+      .reverse();
     return (
       <Card>
         <CardHeader title="Interpreter Versions" />
-        <Tabs value={this.state.tab} onChange={this.changeTab}>
-          <Tab value="tags" label="Tags" />
-          <Tab value="commits" label="Commits" />
-          <Tab value="upstream" label="Upstream" />
-        </Tabs>
-        {(this.state.lastLog || this.state.updating) &&
-          <CardContent>
-            {this.state.lastLog &&
-              <p>
-                {this.state.lastLog}
-              </p>}
-            {this.state.updating && <LinearProgress />}
-          </CardContent>}
-        {this.state.currentVersion &&
-          <div>
-            {this.state.tab === 'tags' &&
-              <CommitList
-                commits={this.state.versions}
-                current={this.state.currentVersion.sha}
-                onClickCommit={this.selectVersion}
-              />}
-            {this.state.tab === 'commits' &&
-              <CommitList
-                commits={this.state.commits}
-                current={this.state.currentVersion.sha}
-                onClickCommit={this.selectVersion}
-              />}
-            {this.state.tab === 'upstream' &&
-              <CommitList
-                commits={this.state.upstream}
-                onClickMerge={this.onClickMerge}
-                current={this.state.currentVersion.sha}
-                onClickCommit={this.selectVersion}
-              />}
-          </div>}
+        <CardContent>
+          <Card>
+            {(this.state.lastLog || this.state.updating) &&
+              <CardContent>
+                <Typography type="body1">
+                  {this.state.lastLog && this.state.lastLog}
+                </Typography>
+                {this.state.updating && <LinearProgress />}
+              </CardContent>}
+            <CardActions>
+              <Button raised color="primary" onClick={this.onClickPushUpstream}>
+                Push Upstream
+              </Button>
+              <Button raised color="primary" onClick={this.onClickReset}>
+                Reset
+              </Button>
+            </CardActions>
+          </Card>
+        </CardContent>
+
+        <CardContent>
+          <Paper>
+            <Tabs value={this.state.tab} onChange={this.changeTab}>
+              <Tab value="tags" label="Tags" />
+              <Tab value="commits" label="Commits" />
+              <Tab value="upstream" label="Upstream" />
+            </Tabs>
+            {this.state.currentVersion &&
+              <div>
+                {this.state.tab === 'tags' &&
+                  <CommitList
+                    commits={this.state.versions}
+                    current={this.state.currentVersion.sha}
+                    onClickCommit={this.selectVersion}
+                  />}
+                {this.state.tab === 'commits' &&
+                  <CommitList
+                    commits={this.state.commits}
+                    current={this.state.currentVersion.sha}
+                    onClickCommit={this.selectVersion}
+                  />}
+                {this.state.tab === 'upstream' &&
+                  <CommitList
+                    commits={upstreamCommits}
+                    onClickMerge={this.onClickMerge}
+                    current={this.state.currentVersion.sha}
+                    onClickCommit={this.selectVersion}
+                  />}
+              </div>}
+          </Paper>
+        </CardContent>
       </Card>
     );
   }

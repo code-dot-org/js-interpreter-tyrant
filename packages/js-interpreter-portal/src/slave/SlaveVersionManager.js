@@ -8,11 +8,11 @@ import Git, {
   Merge,
   Signature,
   Revwalk,
+  Cred,
 } from 'nodegit';
 import ChildProcess from 'child_process';
 import {promisify} from 'util';
 import rimraf from 'rimraf';
-import {ClientEvents} from '../constants';
 import RPCInterface from '../server/RPCInterface';
 
 const REPO_ROOT = '/tmp/js-interpreter-repos';
@@ -29,13 +29,14 @@ export const Repos = {
   },
 };
 
-function commitToJSON(commit) {
+function commitToJSON(commit, upstreamName = Repos.CODE_DOT_ORG.name) {
   return {
     sha: commit.sha(),
     summary: commit.summary(),
     time: commit.timeMs(),
     author: commit.author().toString(),
     committer: commit.committer().toString(),
+    upstreamName,
   };
 }
 
@@ -43,15 +44,15 @@ function commitToJSON(commit) {
 export default class SlaveVersionManager {
   repo = null;
 
-  constructor(socket, backendId) {
+  constructor(socket, slaveId) {
     this.socket = socket;
-    this.backendId = backendId;
+    this.slaveId = slaveId;
     this.clientState = {
       lastLog: '',
       currentVersion: null,
       versions: [],
       updating: false,
-      backendId: this.backendId,
+      slaveId: this.slaveId,
     };
     this.repoConfig = Repos.CODE_DOT_ORG;
   }
@@ -62,14 +63,12 @@ export default class SlaveVersionManager {
   }
 
   ensureRemotes = async () => {
+    this.log('fetching all remotes');
     const remotes = await Remote.list(this.repo);
     await Promise.all(
       Object.keys(Repos).map(async key => {
         const remoteRepoConfig = Repos[key];
-        if (
-          remoteRepoConfig !== this.repoConfig &&
-          !remotes.includes(remoteRepoConfig.name)
-        ) {
+        if (!remotes.includes(remoteRepoConfig.name)) {
           await Remote.create(
             this.repo,
             remoteRepoConfig.name,
@@ -102,7 +101,7 @@ export default class SlaveVersionManager {
     this.log('done');
   };
 
-  getCommitLog = async head => {
+  getCommitLog = async (upstreamName, head) => {
     if (!head) {
       head = await this.repo.getMasterCommit();
     }
@@ -111,7 +110,7 @@ export default class SlaveVersionManager {
       // History emits "commit" event for each commit in the branch's history
       const commits = [];
       history.on('commit', commit => {
-        commits.push(commitToJSON(commit));
+        commits.push(commitToJSON(commit, upstreamName));
       });
       history.on('end', () => resolve(commits));
       history.on('error', reject);
@@ -121,7 +120,7 @@ export default class SlaveVersionManager {
   };
 
   mergeRemote = async remote => {
-    console.log('Attempting merge...');
+    this.log('Attempting merge...');
     await this.repo.mergeBranches(
       'master',
       `${remote}/master`,
@@ -145,10 +144,30 @@ export default class SlaveVersionManager {
     return newVersions;
   }
 
-  update = async () => {
+  pushUpstream = async () => {
+    const remote = await this.repo.getRemote(Repos.CODE_DOT_ORG.name);
+    this.log(`pushing master to ${remote.url()}`);
+    await remote.push(['refs/heads/master:refs/heads/master'], {
+      callbacks: {
+        credentials: () =>
+          Cred.userpassPlaintextNew(
+            process.env.GITHUB_USERNAME,
+            process.env.GITHUB_PASSWORD
+          ),
+      },
+    });
+    this.log('finished pushing to master');
+  };
+
+  mergeUpstreamMaster = async () => {
+    this.repo.mergeBranches('master', 'origin/master');
+  };
+
+  update = async ({reset} = {}) => {
+    this.log('Updating interpreter versions');
     this.setClientState({updating: true});
     const localPath = this.getLocalRepoPath(this.repoConfig);
-    if (fs.existsSync(localPath)) {
+    if (!reset && fs.existsSync(localPath)) {
       this.repo = await Repository.open(localPath);
     } else {
       await this.cloneRepo();
@@ -160,12 +179,16 @@ export default class SlaveVersionManager {
       await this.cloneRepo();
       head = await this.repo.getHeadCommit();
     }
-    let commits = await this.getCommitLog();
+    await this.ensureRemotes();
+    this.log('reading commit history');
+    let commits = await this.getCommitLog(Repos.CODE_DOT_ORG.name);
     const commitsBySha = {};
     commits.forEach(commit => (commitsBySha[commit.sha] = commit));
-    await this.ensureRemotes();
     let upstream = await this.getCommitLog(
-      await this.repo.getReferenceCommit('refs/remotes/NeilFraser/master')
+      Repos.NeilFraser.name,
+      await this.repo.getReferenceCommit(
+        `refs/remotes/${Repos.NeilFraser.name}/master`
+      )
     );
     commits = commits.map(commit => ({version: commit.summary, commit}));
     for (let i = 0; i < upstream.length; i++) {
@@ -182,6 +205,7 @@ export default class SlaveVersionManager {
       upstream,
       updating: false,
     });
+    this.log('Everything is up to date!');
     return this.clientState;
   };
 
@@ -225,12 +249,22 @@ export default class SlaveVersionManager {
         [master, commitToMerge]
       );
       this.log(`Successfully merged commit ${commitId}`);
+      const head = await this.repo.getMasterCommit();
+      await Checkout.tree(this.repo, head, {
+        checkoutStrategy: Checkout.STRATEGY.FORCE,
+      });
+      const currentVersion = {
+        sha: head.sha(),
+        summary: head.summary(),
+        time: head.timeMs(),
+      };
+      this.setClientState({currentVersion});
       this.update();
     }
   };
 
   getLocalRepoPath(repoConfig, extraPath) {
-    const args = [REPO_ROOT, this.backendId, repoConfig.name];
+    const args = [REPO_ROOT, this.slaveId, repoConfig.name];
     if (extraPath) {
       args.push(extraPath);
     }

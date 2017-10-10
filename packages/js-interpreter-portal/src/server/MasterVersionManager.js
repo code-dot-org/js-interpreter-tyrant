@@ -1,7 +1,7 @@
 import RPCInterface from './RPCInterface';
 import SlaveVersionManager from '../slave/SlaveVersionManager';
 
-@RPCInterface()
+@RPCInterface({type: 'master'})
 export default class MasterVersionManager {
   static SlaveClass = SlaveVersionManager;
 
@@ -12,26 +12,28 @@ export default class MasterVersionManager {
     updating: false,
   };
 
-  constructor(io, backendManager) {
-    this.io = io;
-    this.backendManager = backendManager;
-  }
-
   update = async () => {
-    this.backendManager.backends.forEach(({socketId}) => {
-      this.io.to(socketId).emit('SlaveVersionManager.update');
-    });
+    this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
   };
 
   selectVersion = async version => {
-    this.backendManager.backends.forEach(({socketId}) => {
-      this.io.to(socketId).emit('SlaveVersionManager.selectVersion', version);
-    });
+    this.slaveManager.emitToAllSlaves(
+      'SlaveVersionManager.selectVersion',
+      version
+    );
   };
 
   mergeCommit = async sha => {
-    this.backendManager.backends.forEach(({socketId}) => {
-      this.io.to(socketId).emit('SlaveVersionManager.mergeCommit', sha);
-    });
+    this.slaveManager.emitToAllSlaves('SlaveVersionManager.mergeCommit', sha);
+  };
+
+  pushUpstream = async () => {
+    await this.slaveManager.emitPrimarySlave(
+      'SlaveVersionManager.pushUpstream'
+    );
+    await this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
+    await this.slaveManager.emitToAllSlaves(
+      'SlaveVersionManager.mergeUpstreamMaster'
+    );
   };
 }

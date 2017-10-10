@@ -49,12 +49,12 @@ export default class LogOutput extends Component {
   getMessages = () => {
     const nodes = [];
     let lastEvent = {};
-    function renderLastEvent(backendId) {
-      const {timestamp, eventId, data: {message}} = lastEvent[backendId];
+    function renderLastEvent(slaveId) {
+      const {timestamp, eventId, data: {message}} = lastEvent[slaveId];
       nodes.push(
-        <pre key={`${backendId}:${eventId}`}>
+        <pre key={`${slaveId}:${eventId}`}>
           <span className="timestamp">
-            {backendId} {timestamp.format('HH:mm:ss.SSS')}:
+            {slaveId} {timestamp.format('HH:mm:ss.SSS')}:
           </span>{' '}
           {formatMessage(message)}
         </pre>
@@ -64,22 +64,22 @@ export default class LogOutput extends Component {
       if (![Events.LOG, Events.WRITE].includes(event.eventName)) {
         return;
       }
-      const {eventName, backendId, data: {message}} = event;
+      const {eventName, slaveId, data: {message}} = event;
       if (
         eventName === Events.LOG ||
-        (eventName === Events.WRITE && !lastEvent[backendId])
+        (eventName === Events.WRITE && !lastEvent[slaveId])
       ) {
         // make sure we "complete" the last log entry
-        if (lastEvent[backendId]) {
-          renderLastEvent(backendId);
+        if (lastEvent[slaveId]) {
+          renderLastEvent(slaveId);
         }
-        lastEvent[backendId] = event;
-      } else if (eventName === Events.WRITE && lastEvent[backendId]) {
-        lastEvent[backendId].data.message += message;
+        lastEvent[slaveId] = event;
+      } else if (eventName === Events.WRITE && lastEvent[slaveId]) {
+        lastEvent[slaveId].data.message += message;
       }
     });
 
-    Object.keys(lastEvent).forEach(backendId => renderLastEvent(backendId));
+    Object.keys(lastEvent).forEach(slaveId => renderLastEvent(slaveId));
     return nodes;
   };
 
