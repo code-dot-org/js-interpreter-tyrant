@@ -7,6 +7,7 @@ export default class SlaveManager {
   clientState = {
     slaves: [],
     numThreads: 1,
+    formation: [],
   };
 
   constructor(io) {
@@ -35,6 +36,15 @@ export default class SlaveManager {
   get slaves() {
     return this.clientState.slaves;
   }
+
+  getFormation = async () => {
+    if (!this.heroku) {
+      return [];
+    }
+    return await this.heroku.get(
+      `apps/${process.env.HEROKU_APP_NAME}/formation`
+    );
+  };
 
   getSlaves = async () => this.clientState.slaves;
 

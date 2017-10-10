@@ -81,7 +81,7 @@ export default class SlavesCard extends Component {
               <NumberDropdown
                 label="Num Slaves"
                 start={1}
-                count={8}
+                count={40}
                 id="num-slaves"
                 value={this.state.slaves.length}
                 onChange={this.onChangeNumSlaves}

@@ -606,7 +606,7 @@ export default class Tyrant extends EventEmitter {
                   regressed: numRegressed,
                   fixed: numFixed,
                   new: numNew,
-                  minutes: eta,
+                  minutes: secondsRemaining / 60,
                   test: {...test, ...testDiff},
                 });
               }

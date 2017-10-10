@@ -94,10 +94,11 @@ export default class RunCard extends Component {
     });
   }
 
-  onTick = ({slaveId, data: {test}}) => {
+  onTick = ({slaveId, data: {test, minutes}}) => {
     const slaveState = this.getSlaveState(slaveId);
     this.setSlaveState(slaveId, {
       completed: slaveState.completed + 1,
+      minutes,
       results: [...slaveState.results, test],
     });
   };
@@ -155,14 +156,16 @@ export default class RunCard extends Component {
 
   getAggregateSlaveState() {
     const state = {
-      numTests: 0,
+      numTests: 1,
       completed: 0,
       results: [],
       running: false,
+      minutes: 0,
     };
     Object.values(this.state.slaves).forEach(slave => {
       state.numTests += slave.numTests;
       state.completed += slave.completed;
+      state.minutes = Math.max(state.minutes, slave.minutes || 0);
       if (slave.results) {
         state.results = state.results.concat(slave.results);
       }
@@ -184,6 +187,8 @@ export default class RunCard extends Component {
       (found, test) => found || test.isFix || test.isRegression || test.isNew,
       false
     );
+    const minutes = Math.floor(state.minutes);
+    const seconds = Math.floor((state.minutes - minutes) * 60);
     return (
       <MainCard>
         <CardHeader title="Test Results" />
@@ -257,6 +262,12 @@ export default class RunCard extends Component {
                         >
                           /{state.numTests}
                         </span>
+                        <Typography color="accent" type="caption">
+                          {minutes
+                            ? `${minutes}m`
+                            : seconds ? `${seconds}s` : '? mins'}{' '}
+                          left
+                        </Typography>
                       </div>
                     </div>}
                 </CardContent>
