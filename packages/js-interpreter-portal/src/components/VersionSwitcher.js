@@ -170,16 +170,32 @@ export default class VersionSwitcher extends Component {
     versions: [],
     commits: [],
     upstream: [],
-    currentVersion: null,
-    lastLog: '',
-    updating: false,
     tab: 'tags',
+    slaves: {},
+  };
+
+  setSlaveState = newState => {
+    const slaveState = this.state.slaves[newState.slaveId] || {
+      lastLog: '',
+      currentVersion: null,
+      versions: [],
+      commits: [],
+      upstream: [],
+      updating: false,
+    };
+    this.setState({
+      slaves: {
+        ...this.state.slaves,
+        [newState.slaveId]: {
+          ...slaveState,
+          ...newState,
+        },
+      },
+    });
   };
 
   async componentDidMount() {
-    Connection.SlaveVersionManager.onClientStateChange(newState => {
-      this.setState(newState);
-    });
+    Connection.SlaveVersionManager.onClientStateChange(this.setSlaveState);
     await Connection.MasterVersionManager.update();
   }
 
@@ -204,7 +220,9 @@ export default class VersionSwitcher extends Component {
   };
 
   render() {
-    const upstreamCommits = this.state.upstream
+    const {upstream, commits, currentVersion, versions} =
+      Object.values(this.state.slaves)[0] || {};
+    const upstreamCommits = upstream
       .filter(({commit}) => !commit.merged)
       .reverse();
     return (
@@ -212,13 +230,17 @@ export default class VersionSwitcher extends Component {
         <CardHeader title="Interpreter Versions" />
         <CardContent>
           <Card>
-            {(this.state.lastLog || this.state.updating) &&
-              <CardContent>
-                <Typography type="body1">
-                  {this.state.lastLog && this.state.lastLog}
-                </Typography>
-                {this.state.updating && <LinearProgress />}
-              </CardContent>}
+            {Object.values(this.state.slaves)
+              .filter(slaveState => slaveState.updating || slaveState.lastLog)
+              .map(slaveState =>
+                <CardContent key={slaveState.slaveId}>
+                  <Typography type="body1">
+                    {slaveState.slaveId}:{' '}
+                    {slaveState.lastLog && slaveState.lastLog}
+                  </Typography>
+                  {slaveState.updating && <LinearProgress />}
+                </CardContent>
+              )}
             <CardActions>
               <Button raised color="primary" onClick={this.onClickPushUpstream}>
                 Push Upstream
@@ -237,25 +259,25 @@ export default class VersionSwitcher extends Component {
               <Tab value="commits" label="Commits" />
               <Tab value="upstream" label="Upstream" />
             </Tabs>
-            {this.state.currentVersion &&
+            {currentVersion &&
               <div>
                 {this.state.tab === 'tags' &&
                   <CommitList
-                    commits={this.state.versions}
-                    current={this.state.currentVersion.sha}
+                    commits={versions}
+                    current={currentVersion.sha}
                     onClickCommit={this.selectVersion}
                   />}
                 {this.state.tab === 'commits' &&
                   <CommitList
-                    commits={this.state.commits}
-                    current={this.state.currentVersion.sha}
+                    commits={commits}
+                    current={currentVersion.sha}
                     onClickCommit={this.selectVersion}
                   />}
                 {this.state.tab === 'upstream' &&
                   <CommitList
                     commits={upstreamCommits}
                     onClickMerge={this.onClickMerge}
-                    current={this.state.currentVersion.sha}
+                    current={currentVersion.sha}
                     onClickCommit={this.selectVersion}
                   />}
               </div>}

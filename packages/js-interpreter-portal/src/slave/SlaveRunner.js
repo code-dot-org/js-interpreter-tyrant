@@ -10,10 +10,8 @@ export default class SlaveRunner {
   eventId = 1;
   numThreads = 1;
 
-  constructor(socket, versionManager, slaveId) {
-    this.socket = socket;
+  constructor(versionManager) {
     this.versionManager = versionManager;
-    this.slaveId = slaveId;
   }
 
   _onTyrantEvent = (eventName, data) =>

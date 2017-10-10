@@ -9,7 +9,7 @@ export default class Slave {
     this.master = master;
     this.socket = socket;
     this.versionManager = new SlaveVersionManager(socket, this.id);
-    this.runner = new SlaveRunner(socket, this.versionManager, this.id);
+    this.runner = new SlaveRunner(socket, this.id, this.versionManager);
     this.runner.listenTo(socket);
     this.versionManager.listenTo(socket);
     console.log('registering slave', this.id, 'with master');

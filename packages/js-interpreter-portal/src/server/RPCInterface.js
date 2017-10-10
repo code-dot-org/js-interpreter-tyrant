@@ -18,46 +18,43 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
         super(io, slaveManager, ...args);
         this.io = io;
         this.slaveManager = slaveManager;
+        this.clientState = this.clientState || {};
       }
+      setClientState(stateUpdates) {
+        this.clientState = {...this.clientState, ...stateUpdates};
+        this.io.to('clients').emit(clientStateChangeEvent, this.clientState);
+      }
+      getClientState = async () => this.clientState;
     }
 
-    class WrappedSlaveClass extends cls {}
+    class WrappedSlaveClass extends cls {
+      constructor(socket, slaveId, ...args) {
+        super(...args);
+        this.socket = socket;
+        this.slaveId = slaveId;
+        this.clientState = this.clientState || {};
+      }
+
+      setClientState(stateUpdates) {
+        this.clientState = {
+          ...this.clientState,
+          ...stateUpdates,
+        };
+        this.socket.emit(clientStateChangeEvent, {
+          ...this.clientState,
+          slaveId: this.slaveId,
+        });
+      }
+
+      getClientState = async () => ({
+        ...this.clientState,
+        slaveId: this.slaveId,
+      });
+    }
 
     return class WrappedClass extends (type === 'slave'
       ? WrappedSlaveClass
       : WrappedMasterClass) {
-      setClientState(stateUpdates) {
-        if (!this.clientState) {
-          throw new Error(
-            'You must specify a clientState object during construction if you want to set client state'
-          );
-        }
-        let emitter;
-        if (type === 'slave') {
-          if (!this.socket) {
-            throw new Error(
-              'You must store the socket if you want to set client state'
-            );
-          }
-          emitter = this.socket;
-        } else if (type === 'master') {
-          if (!this.io) {
-            throw new Error(
-              'An RPCInterface with type=master must have a this.io on it'
-            );
-          }
-          emitter = this.io.to('clients');
-        } else {
-          throw new Error(
-            `Unrecognized RPCInterface type "${type}". Use either "slave" or "master"`
-          );
-        }
-        this.clientState = {...this.clientState, ...stateUpdates};
-        emitter.emit(clientStateChangeEvent, this.clientState);
-      }
-
-      getClientState = async () => this.clientState;
-
       listenTo(socket) {
         Object.keys(this)
           .filter(

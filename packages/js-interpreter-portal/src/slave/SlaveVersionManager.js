@@ -43,19 +43,15 @@ function commitToJSON(commit, upstreamName = Repos.CODE_DOT_ORG.name) {
 @RPCInterface()
 export default class SlaveVersionManager {
   repo = null;
-
-  constructor(socket, slaveId) {
-    this.socket = socket;
-    this.slaveId = slaveId;
-    this.clientState = {
-      lastLog: '',
-      currentVersion: null,
-      versions: [],
-      updating: false,
-      slaveId: this.slaveId,
-    };
-    this.repoConfig = Repos.CODE_DOT_ORG;
-  }
+  repoConfig = Repos.CODE_DOT_ORG;
+  clientState = {
+    lastLog: '',
+    currentVersion: null,
+    versions: [],
+    commits: [],
+    upstream: [],
+    updating: false,
+  };
 
   log(msg) {
     console.log(msg);
