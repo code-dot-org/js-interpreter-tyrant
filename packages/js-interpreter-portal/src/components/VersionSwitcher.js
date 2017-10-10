@@ -22,6 +22,8 @@ import styled from 'styled-components';
 import {ClientEvents} from '../constants';
 import Connection from '../client/Connection';
 
+import MainCard from './MainCard';
+
 const Commit = styled.span`
   span {
     &:last-child {
@@ -206,7 +208,7 @@ export default class VersionSwitcher extends Component {
       .filter(({commit}) => !commit.merged)
       .reverse();
     return (
-      <Card>
+      <MainCard>
         <CardHeader title="Interpreter Versions" />
         <CardContent>
           <Card>
@@ -259,7 +261,7 @@ export default class VersionSwitcher extends Component {
               </div>}
           </Paper>
         </CardContent>
-      </Card>
+      </MainCard>
     );
   }
 }

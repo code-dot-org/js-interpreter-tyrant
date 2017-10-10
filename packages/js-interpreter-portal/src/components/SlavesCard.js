@@ -1,5 +1,4 @@
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
 import {
   Select,
   MenuItem,
@@ -14,7 +13,7 @@ import {
   withStyles,
 } from 'material-ui';
 import Connection from '../client/Connection';
-import {ClientEvents} from '../constants';
+import MainCard from './MainCard';
 
 const NumberDropdown = withStyles({
   formControl: {
@@ -74,36 +73,42 @@ export default class SlavesCard extends Component {
 
   render() {
     return (
-      <Card>
+      <MainCard>
         <CardHeader title="Slaves" />
         <CardContent>
-          <NumberDropdown
-            label="Num Slaves"
-            start={1}
-            count={8}
-            id="num-slaves"
-            value={this.state.slaves.length}
-            onChange={this.onChangeNumSlaves}
-          />
-          <NumberDropdown
-            label="Num Threads"
-            start={1}
-            count={8}
-            id="num-threads"
-            value={this.state.numThreads}
-            onChange={this.onChangeNumThreads}
-          />
+          <Card>
+            <CardContent>
+              <NumberDropdown
+                label="Num Slaves"
+                start={1}
+                count={8}
+                id="num-slaves"
+                value={this.state.slaves.length}
+                onChange={this.onChangeNumSlaves}
+              />
+              <NumberDropdown
+                label="Num Threads"
+                start={1}
+                count={8}
+                id="num-threads"
+                value={this.state.numThreads}
+                onChange={this.onChangeNumThreads}
+              />
+            </CardContent>
+          </Card>
         </CardContent>
-        <CardContent style={{padding: 0}}>
-          <List>
-            {this.state.slaves.map(slave =>
-              <ListItem key={slave.id} divider>
-                {slave.id}
-              </ListItem>
-            )}
-          </List>
+        <CardContent>
+          <Card>
+            <List>
+              {this.state.slaves.map(slave =>
+                <ListItem key={slave.id} divider>
+                  {slave.id}
+                </ListItem>
+              )}
+            </List>
+          </Card>
         </CardContent>
-      </Card>
+      </MainCard>
     );
   }
 }

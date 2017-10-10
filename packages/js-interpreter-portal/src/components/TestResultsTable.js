@@ -135,6 +135,7 @@ export default class TestResultsTable extends PureComponent {
       }
       const row = (
         <ListItem
+          divider
           key={key}
           button
           disableRipple
@@ -184,7 +185,7 @@ export default class TestResultsTable extends PureComponent {
     }
 
     return (
-      <List dense>
+      <List dense disablePadding>
         {this.renderLevel(results)}
       </List>
     );

@@ -8,7 +8,7 @@ import styled from 'styled-components';
 
 const Wrapper = styled(Grid).attrs({container: true, spacing: 24})`
   padding: 24px;
-  background-color: ${grey[200]};
+  background-color: white;
 `;
 
 export default class FrontPage extends Component {

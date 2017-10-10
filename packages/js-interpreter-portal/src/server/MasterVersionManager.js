@@ -28,7 +28,7 @@ export default class MasterVersionManager {
   };
 
   pushUpstream = async () => {
-    await this.slaveManager.emitPrimarySlave(
+    await this.slaveManager.emitToPrimarySlave(
       'SlaveVersionManager.pushUpstream'
     );
     await this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');

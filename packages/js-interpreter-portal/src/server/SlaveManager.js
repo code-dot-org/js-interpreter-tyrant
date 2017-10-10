@@ -46,17 +46,22 @@ export default class SlaveManager {
     return this.io.sockets.connected[slave.socketId];
   }
 
-  async emitPrimarySlave(event, ...args) {
+  emitToPrimarySlave(event, ...args) {
+    return this.emitToSlave(this.slaves[0], event, ...args);
+  }
+
+  async emitToSlave(slave, event, ...args) {
     return await new Promise(resolve =>
-      this.getSocketIdx(0).emit(event, ...args, resolve)
+      this.getSocketFor(slave).emit(event, ...args, resolve)
     );
   }
 
   async emitToAllSlaves(event, ...args) {
     return await Promise.all(
-      this.slaves.map(
-        async slave => await this.getSocketFor(slave).emit(event, ...args)
-      )
+      this.slaves.map(async slave => {
+        const result = await this.emitToSlave(slave, event, ...args);
+        return {result, slaveId: slave.id};
+      })
     );
   }
 

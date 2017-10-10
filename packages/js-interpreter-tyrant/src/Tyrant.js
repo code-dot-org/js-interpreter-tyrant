@@ -1,3 +1,4 @@
+import EventEmitter from 'events';
 import path from 'path';
 import fetch from 'node-fetch';
 import os from 'os';
@@ -65,8 +66,9 @@ const ARGS = yargs
   .help('h')
   .alias('h', 'help');
 
-export default class Tyrant {
+export default class Tyrant extends EventEmitter {
   constructor(argv) {
+    super();
     if (!argv) {
       argv = ARGS.argv;
     } else if (Array.isArray(argv)) {
@@ -97,6 +99,10 @@ export default class Tyrant {
       : {};
   }
 
+  getNewResults() {
+    return readResultsFromFile(this.RESULTS_FILE);
+  }
+
   getSavedResults() {
     return readResultsFromFile(
       typeof this.argv.diff === 'string'
@@ -113,6 +119,7 @@ export default class Tyrant {
   emit(event, data) {
     if (this.onEvent) {
       this.onEvent(event, data);
+      super.emit(event, data);
     }
   }
 
@@ -126,19 +133,21 @@ export default class Tyrant {
     this.emit(Events.WRITE, {message: args.join(' ')});
   }
 
-  execute = () => {
+  execute = async () => {
     this.emit(Events.STARTED_EXECUTION);
     if (this.argv.run) {
-      this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE).then(
-        this.postRun
-      );
+      await this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
+      this.postRun();
     } else if (this.argv.circleBuild) {
-      this.downloadCircleResults().then(this.processTestResults);
+      await this.downloadCircleResults();
+      this.processTestResults();
     } else if (this.argv.rerun) {
-      this.rerun().then(this.processTestResults);
+      await this.rerun();
+      this.processTestResults();
     } else {
       this.processTestResults();
     }
+    this.emit(Events.FINISHED_EXECUTION);
   };
 
   rerun = () => {
@@ -611,8 +620,12 @@ export default class Tyrant {
 
   saveResults = results => {
     this.log('Saving results for future comparison...');
-    results = results.map(test => ({
-      file: test.file,
+    const allResults = {
+      ...this.OLD_RESULTS_BY_KEY,
+      ...this.getResultsByKey(results),
+    };
+    results = Object.values(allResults).map(test => ({
+      file: test.file.slice(test.file.indexOf('tyrant')),
       attrs: test.attrs,
       result: test.result,
     }));
@@ -687,5 +700,10 @@ export default class Tyrant {
 }
 
 function readResultsFromFile(filename) {
-  return JSON.parse(fs.readFileSync(path.resolve(filename)));
+  const data = fs.readFileSync(path.resolve(filename));
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return JSON.parse(data + ']');
+  }
 }

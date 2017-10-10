@@ -163,7 +163,9 @@ export default class SlaveVersionManager {
     this.repo.mergeBranches('master', 'origin/master');
   };
 
-  update = async ({reset} = {}) => {
+  update = async options => {
+    options = options || {};
+    const {reset} = options;
     this.log('Updating interpreter versions');
     this.setClientState({updating: true});
     const localPath = this.getLocalRepoPath(this.repoConfig);

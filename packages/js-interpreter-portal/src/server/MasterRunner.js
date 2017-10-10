@@ -6,13 +6,13 @@ export default class MasterRunner {
   static SlaveClass = SlaveRunner;
 
   getSavedResults = () =>
-    this.slaveManager.emitPrimarySlave('SlaveRunner.getSavedResults');
+    this.slaveManager.emitToPrimarySlave('SlaveRunner.getSavedResults');
+
+  getNewResults = async () =>
+    this.slaveManager.emitToAllSlaves('SlaveRunner.getNewResults');
 
   saveResults = async results => {
-    await this.slaveManager.emitPrimarySlave(
-      'SlaveRunner.saveResults',
-      results
-    );
+    await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults', results);
   };
 
   execute = async ({tests}) => {
