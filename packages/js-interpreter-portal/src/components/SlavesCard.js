@@ -55,12 +55,15 @@ export default class SlavesCard extends Component {
   state = {
     slaves: [],
     numThreads: 1,
+    formation: null,
   };
 
   async componentDidMount() {
     const state = await Connection.SlaveManager.getClientState();
     this.setState(state);
     Connection.SlaveManager.onClientStateChange(state => this.setState(state));
+    const formation = await Connection.SlaveManager.getFormation();
+    this.setState({formation});
   }
 
   onChangeNumSlaves = async ({target: {value}}) => {
@@ -106,6 +109,12 @@ export default class SlavesCard extends Component {
                 </ListItem>
               )}
             </List>
+            {this.state.formation &&
+              <CardContent>
+                <pre>
+                  {JSON.stringify(this.state.formation, null, 2)}
+                </pre>
+              </CardContent>}
           </Card>
         </CardContent>
       </MainCard>
