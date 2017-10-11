@@ -222,9 +222,8 @@ export default class VersionSwitcher extends Component {
   render() {
     const {upstream, commits, currentVersion, versions} =
       Object.values(this.state.slaves)[0] || {};
-    const upstreamCommits = upstream
-      .filter(({commit}) => !commit.merged)
-      .reverse();
+    const upstreamCommits =
+      upstream && upstream.filter(({commit}) => !commit.merged).reverse();
     return (
       <MainCard>
         <CardHeader title="Interpreter Versions" />

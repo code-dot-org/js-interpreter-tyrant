@@ -42,7 +42,7 @@ export default class SlaveManager {
       return [];
     }
     return await this.heroku.get(
-      `apps/${process.env.HEROKU_APP_NAME}/formation`
+      `/apps/${process.env.HEROKU_APP_NAME}/formation`
     );
   };
 

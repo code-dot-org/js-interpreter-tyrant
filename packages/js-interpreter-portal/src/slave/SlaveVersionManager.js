@@ -21,7 +21,7 @@ const rmdir = promisify(rimraf);
 export const Repos = {
   CODE_DOT_ORG: {
     gitUrl: 'https://github.com/code-dot-org/JS-Interpreter.git',
-    name: 'code-dot-org',
+    name: 'origin',
   },
   NeilFraser: {
     gitUrl: 'https://github.com/NeilFraser/JS-Interpreter.git',
@@ -160,6 +160,9 @@ export default class SlaveVersionManager {
   };
 
   update = async options => {
+    if (this.clientState.updating) {
+      return this.clientState;
+    }
     options = options || {};
     const {reset} = options;
     this.log('Updating interpreter versions');
