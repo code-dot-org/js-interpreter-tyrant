@@ -46,6 +46,14 @@ export default class SlaveManager {
     );
   };
 
+  restartSlave = async slave => {
+    if (this.heroku) {
+      await this.heroku.delete(
+        `/apps/${process.env.HEROKU_APP_NAME}/dynos/${slave.id}`
+      );
+    }
+  };
+
   getSlaves = async () => this.clientState.slaves;
 
   getSocketIdx(index) {

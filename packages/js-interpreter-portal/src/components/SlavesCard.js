@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import {
+  Typography,
   Select,
   MenuItem,
   Input,
@@ -67,6 +68,7 @@ export default class SlavesCard extends Component {
   }
 
   onChangeNumSlaves = async ({target: {value}}) => {
+    this.setState({requestedNumSlaves: value});
     await Connection.SlaveManager.setConfig({numSlaves: value});
   };
 
@@ -75,11 +77,33 @@ export default class SlavesCard extends Component {
   };
 
   render() {
+    let cost = 0;
+    const costs = {
+      'Standard-1X': 25,
+      'Standard-2X': 50,
+      'Performance-M': 250,
+      'Performance-L': 500,
+    };
+    if (this.state.formation) {
+      cost = this.state.formation.reduce((sum, dynoType) => {
+        const runningTimeMs =
+          new Date().getTime() - new Date(dynoType.updatedAt).getTime();
+        const runningTimeMonths = runningTimeMs / 1000 / 60 / 60 / 24 / 30;
+        return (
+          sum + dynoType.quantity * runningTimeMonths * costs[dynoType.size]
+        );
+      }, 0);
+    }
     return (
       <MainCard>
         <CardHeader title="Slaves" />
         <CardContent>
           <Card>
+            <CardContent>
+              <Typography type="body1">
+                Net Cost: ${Math.floor(cost * 1000) / 1000}
+              </Typography>
+            </CardContent>
             <CardContent>
               <NumberDropdown
                 label="Num Slaves"

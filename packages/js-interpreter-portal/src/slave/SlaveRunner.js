@@ -8,7 +8,9 @@ import {objectToArgs} from '../util';
 @RPCInterface()
 export default class SlaveRunner {
   eventId = 1;
-  numThreads = 1;
+  clientState = {
+    numThreads: 8,
+  };
 
   constructor(versionManager) {
     this.versionManager = versionManager;
@@ -24,7 +26,7 @@ export default class SlaveRunner {
     });
 
   setNumThreads = async ({numThreads}) => {
-    this.numThreads = numThreads;
+    this.setClientState({numThreads});
   };
 
   saveResults = async results => {
@@ -52,7 +54,7 @@ export default class SlaveRunner {
         noExit: true,
         diff: true,
         progress: true,
-        threads: this.numThreads,
+        threads: this.clientState.numThreads,
         hostPath: this.versionManager.getLocalRepoPath(
           Repos.CODE_DOT_ORG,
           'bin/run.js'

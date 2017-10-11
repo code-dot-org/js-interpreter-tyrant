@@ -15,6 +15,12 @@ export default class MasterRunner {
     await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults', results);
   };
 
+  kill = async () => {
+    await Promise.all(
+      this.slaveManager.slaves.map(this.slaveManager.restartSlave)
+    );
+  };
+
   execute = async ({tests}) => {
     this.slaveManager.slaves.forEach((slave, splitIndex, slaves) => {
       this.slaveManager.getSocketFor(slave).emit('SlaveRunner.execute', {

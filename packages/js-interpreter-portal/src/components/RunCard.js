@@ -55,6 +55,9 @@ class GlobInput extends Component {
           >
             {this.state.value ? 'Run Tests' : 'Run All 40,0000+ Tests'}
           </Button>
+          <Button raised onClick={this.props.onClickKill}>
+            Stop
+          </Button>
         </CardActions>
       </Card>
     );
@@ -151,6 +154,9 @@ export default class RunCard extends Component {
     this.run(tests);
   };
   onClickRun = () => this.run(this.state.testGlob.split(' '));
+  onClickKill = async () => {
+    await Connection.MasterRunner.kill();
+  };
 
   handleChange = name => ({target: {value}}) => this.setState({[name]: value});
 
@@ -193,7 +199,10 @@ export default class RunCard extends Component {
       <MainCard>
         <CardHeader title="Test Results" />
         <CardContent>
-          <GlobInput onClickRun={this.onClickRerunTests} />
+          <GlobInput
+            onClickRun={this.onClickRerunTests}
+            onClickKill={this.onClickKill}
+          />
         </CardContent>
         <CardContent>
           <Card>
