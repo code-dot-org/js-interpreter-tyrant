@@ -1,4 +1,5 @@
 import React, {Component} from 'react';
+import PropTypes from 'prop-types';
 import {
   LinearProgress,
   Button,
@@ -26,6 +27,13 @@ class GlobInput extends Component {
     value: 'built-ins/Object/defineProperty/*.js',
   };
 
+  static propsTypes = {
+    onClickRun: PropTypes.func.isRequired,
+    onClickKill: PropTypes.func.isRequired,
+    slaveState: PropTypes.object.isRequired,
+    canRun: PropTypes.bool.isRequired,
+  };
+
   render() {
     return (
       <Card>
@@ -46,6 +54,7 @@ class GlobInput extends Component {
           <Button
             color="primary"
             raised
+            disabled={this.props.slaveState.running || !this.props.canRun}
             onClick={() =>
               this.props.onClickRun(
                 this.state.value
@@ -55,7 +64,11 @@ class GlobInput extends Component {
           >
             {this.state.value ? 'Run Tests' : 'Run All 40,0000+ Tests'}
           </Button>
-          <Button raised onClick={this.props.onClickKill}>
+          <Button
+            raised
+            disabled={!this.props.slaveState.running}
+            onClick={this.props.onClickKill}
+          >
             Stop
           </Button>
         </CardActions>
@@ -73,9 +86,13 @@ export default class RunCard extends Component {
     savedResults: null,
     tab: 'new-results',
     testGlob: '',
+    canRun: false,
   };
 
   run = tests => {
+    Object.keys(this.state.slaves).forEach(slaveId =>
+      this.setSlaveState(slaveId, {results: []})
+    );
     Connection.MasterRunner.execute({tests});
   };
 
@@ -102,13 +119,18 @@ export default class RunCard extends Component {
     });
   };
 
-  componentDidMount() {
+  async componentDidMount() {
     TyrantEventQueue.on(Events.TICK, this.onTick);
     Connection.MasterRunner.onClientStateChange(newState => {
       this.setState(newState);
     });
     Connection.SlaveRunner.onClientStateChange(newState =>
       this.setSlaveState(newState.slaveId, newState)
+    );
+    const state = await Connection.SlaveManager.getClientState();
+    this.setState({canRun: state.slaves.length > 0});
+    Connection.SlaveManager.onClientStateChange(state =>
+      this.setState({canRun: state.slaves.length > 0})
     );
   }
 
@@ -178,8 +200,10 @@ export default class RunCard extends Component {
         <CardHeader title="Test Results" />
         <CardContent>
           <GlobInput
+            slaveState={state}
             onClickRun={this.onClickRerunTests}
             onClickKill={this.onClickKill}
+            canRun={this.state.canRun}
           />
         </CardContent>
         <CardContent>

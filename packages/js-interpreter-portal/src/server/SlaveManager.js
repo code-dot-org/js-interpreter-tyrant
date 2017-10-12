@@ -34,7 +34,6 @@ export default class SlaveManager {
         stdio: 'inherit',
       }
     );
-    this.setClientState({slaves: [...this.clientState.slaves, {id}]});
   }
 
   getSlave(id) {
@@ -56,14 +55,14 @@ export default class SlaveManager {
   };
 
   restartSlave = async slave => {
+    this.setClientState({
+      slaves: this.clientState.slaves.filter(s => s.id !== slave.id),
+    });
     if (this.heroku) {
       await this.heroku.delete(
         `/apps/${process.env.HEROKU_APP_NAME}/dynos/${slave.id}`
       );
     } else {
-      this.setClientState({
-        slaves: this.clientState.slaves.filter(s => s.id !== slave.id),
-      });
       console.log('Restarting slave', slave.id);
       this.emitToSlave(slave, 'SlaveRunner.kill');
       this.provisionSlave(slave.id);

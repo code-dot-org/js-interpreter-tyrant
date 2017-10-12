@@ -10,7 +10,6 @@ export default class SlaveRunner {
   eventId = 1;
   clientState = {
     numThreads: 8,
-    lastEvent: null,
   };
 
   constructor(versionManager) {
@@ -18,7 +17,6 @@ export default class SlaveRunner {
   }
 
   _onTyrantEvent = (eventName, data) => {
-    this.setClientState({lastEvent: {eventName, data}});
     this.socket.emit(ClientEvents.TYRANT_EVENT, {
       timestamp: new Date().getTime(),
       eventName,
@@ -50,7 +48,10 @@ export default class SlaveRunner {
 
   kill = async () => {
     console.log('Killing slave process.');
-    process.exit(1);
+    this.setClientState({running: false});
+    await new Promise(resolve =>
+      setTimeout(() => resolve(process.exit(1)), 1000)
+    );
   };
 
   getTyrant(args = {}, positional = []) {
