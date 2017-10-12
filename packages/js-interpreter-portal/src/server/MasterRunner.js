@@ -11,8 +11,8 @@ export default class MasterRunner {
   getNewResults = async () =>
     this.slaveManager.emitToAllSlaves('SlaveRunner.getNewResults');
 
-  saveResults = async results => {
-    await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults', results);
+  saveResults = async () => {
+    await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults');
   };
 
   kill = async () => {

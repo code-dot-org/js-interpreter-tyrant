@@ -63,8 +63,6 @@ export default class SlavesCard extends Component {
     const state = await Connection.SlaveManager.getClientState();
     this.setState(state);
     Connection.SlaveManager.onClientStateChange(state => this.setState(state));
-    const formation = await Connection.SlaveManager.getFormation();
-    this.setState({formation});
   }
 
   onChangeNumSlaves = async ({target: {value}}) => {

@@ -23,7 +23,7 @@ import TestResultsTable from './TestResultsTable';
 
 class GlobInput extends Component {
   state = {
-    value: 'language/types/string/**.js',
+    value: 'built-ins/Object/defineProperty/*.js',
   };
 
   render() {
@@ -73,11 +73,9 @@ export default class RunCard extends Component {
     savedResults: null,
     tab: 'new-results',
     testGlob: '',
-    isRunning: false,
   };
 
   run = tests => {
-    this.setState({numTests: tests ? tests.length * 2 : 1, completed: 0});
     Connection.MasterRunner.execute({tests});
   };
 
@@ -100,36 +98,18 @@ export default class RunCard extends Component {
   onTick = ({slaveId, data: {test, minutes}}) => {
     const slaveState = this.getSlaveState(slaveId);
     this.setSlaveState(slaveId, {
-      completed: slaveState.completed + 1,
-      minutes,
-      results: [...slaveState.results, test],
+      results: [...(slaveState.results || []), test],
     });
-  };
-
-  onStartedExecution = ({slaveId}) => {
-    this.setSlaveState(slaveId, {running: true});
-  };
-
-  onStartedRunning = ({slaveId, data: {numTests}}) => {
-    this.setSlaveState(slaveId, {
-      numTests,
-      completed: 0,
-      results: [],
-    });
-  };
-
-  onFinishedExecution = ({slaveId}) => {
-    this.setSlaveState(slaveId, {running: false});
   };
 
   componentDidMount() {
     TyrantEventQueue.on(Events.TICK, this.onTick);
-    TyrantEventQueue.on(Events.STARTED_EXECUTION, this.onStartedExecution);
-    TyrantEventQueue.on(Events.STARTED_RUNNING, this.onStartedRunning);
-    TyrantEventQueue.on(Events.FINISHED_EXECUTION, this.onFinishedExecution);
     Connection.MasterRunner.onClientStateChange(newState => {
       this.setState(newState);
     });
+    Connection.SlaveRunner.onClientStateChange(newState =>
+      this.setSlaveState(newState.slaveId, newState)
+    );
   }
 
   onClickLoadSavedResults = async () => {
@@ -145,9 +125,7 @@ export default class RunCard extends Component {
   };
 
   onClickSaveResults = async () => {
-    await Connection.MasterRunner.saveResults(
-      this.getAggregateSlaveState().results
-    );
+    await Connection.MasterRunner.saveResults();
   };
 
   onClickRerunTests = async tests => {
@@ -169,7 +147,7 @@ export default class RunCard extends Component {
       minutes: 0,
     };
     Object.values(this.state.slaves).forEach(slave => {
-      state.numTests += slave.numTests;
+      state.numTests += slave.numTests || 1;
       state.completed += slave.completed;
       state.minutes = Math.max(state.minutes, slave.minutes || 0);
       if (slave.results) {

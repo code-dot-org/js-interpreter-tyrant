@@ -10,13 +10,15 @@ export default class SlaveRunner {
   eventId = 1;
   clientState = {
     numThreads: 8,
+    lastEvent: null,
   };
 
   constructor(versionManager) {
     this.versionManager = versionManager;
   }
 
-  _onTyrantEvent = (eventName, data) =>
+  _onTyrantEvent = (eventName, data) => {
+    this.setClientState({lastEvent: {eventName, data}});
     this.socket.emit(ClientEvents.TYRANT_EVENT, {
       timestamp: new Date().getTime(),
       eventName,
@@ -24,13 +26,14 @@ export default class SlaveRunner {
       slaveId: this.slaveId,
       data,
     });
+  };
 
   setNumThreads = async ({numThreads}) => {
     this.setClientState({numThreads});
   };
 
-  saveResults = async results => {
-    this.getTyrant().saveResults(results);
+  saveResults = async () => {
+    await this.getTyrant({save: true}).execute();
   };
 
   getSavedResults = async () => {
@@ -38,40 +41,67 @@ export default class SlaveRunner {
   };
 
   getNewResults = async () => {
-    return this.getTyrant().getNewResults();
+    const tyrant = this.getTyrant();
+    return tyrant
+      .getNewResults()
+      .map(test => ({...test, ...tyrant.getTestDiff(test)}))
+      .filter(({isNew, isFix, isRegression}) => isNew || isFix || isRegression);
   };
 
-  getTyrant({splitIndex, splitInto, tests} = {}) {
-    const args = objectToArgs(
+  kill = async () => {
+    console.log('Killing slave process.');
+    process.exit(1);
+  };
+
+  getTyrant(args = {}, positional = []) {
+    const cliArgs = objectToArgs(
       {
         root: this.versionManager.getLocalRepoPath(
           Repos.CODE_DOT_ORG,
           'tyrant'
         ),
-        splitInto,
+        hostPath: this.versionManager.getLocalRepoPath(
+          Repos.CODE_DOT_ORG,
+          'bin/run.js'
+        ),
+        ...args,
+      },
+      positional
+    );
+    return new Tyrant(cliArgs);
+  }
+
+  execute = async ({splitIndex, splitInto, tests}) => {
+    this.getTyrant(
+      {
         splitIndex,
+        splitInto,
         run: true,
         noExit: true,
         diff: true,
         progress: true,
         threads: this.clientState.numThreads,
-        hostPath: this.versionManager.getLocalRepoPath(
-          Repos.CODE_DOT_ORG,
-          'bin/run.js'
-        ),
       },
       tests
         ? tests.map(path =>
             this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG, path)
           )
         : []
-    );
-    return new Tyrant(args);
-  }
-
-  execute = async ({splitIndex, splitInto, tests}) => {
-    this.getTyrant({splitIndex, splitInto, tests})
+    )
       .setEventCallback((...args) => this._onTyrantEvent(...args))
+      .on(Events.STARTED_EXECUTION, () => this.setClientState({running: true}))
+      .on(Events.STARTED_RUNNING, ({numTests}) =>
+        this.setClientState({completed: 0, numTests})
+      )
+      .on(Events.TICK, ({minutes}) =>
+        this.setClientState({
+          completed: this.clientState.completed + 1,
+          minutes,
+        })
+      )
+      .on(Events.FINISHED_EXECUTION, () =>
+        this.setClientState({running: false})
+      )
       .execute();
   };
 }

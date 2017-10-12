@@ -21,6 +21,8 @@ const SecondaryText = styled.span`
   }
 `;
 
+const MAX_RESULTS_TO_SHOW = 10;
+
 function groupBy(items, getKey, agg) {
   const groups = new Map();
   items.forEach(item => {
@@ -87,6 +89,7 @@ export default class TestResultsTable extends PureComponent {
           fixed: (byDiff.get('fix') || []).length,
           regressed: (byDiff.get('regression') || []).length,
           newTest: (byDiff.get('new') || []).length,
+          byDiff,
           total: tests.length,
         };
       }
@@ -94,7 +97,15 @@ export default class TestResultsTable extends PureComponent {
     return Array.from(rowData.values());
   }
 
-  renderRowText({passed, fixed, regressed, newTest, total}) {
+  renderRowText({
+    isExpanded,
+    wasTruncated,
+    passed,
+    fixed,
+    regressed,
+    newTest,
+    total,
+  }) {
     return (
       <SecondaryText>
         <span>
@@ -125,57 +136,87 @@ export default class TestResultsTable extends PureComponent {
   };
 
   renderLevel(results, level = 0) {
-    return this.getRowData(results, level).map(data => {
-      const {results, key} = data;
-      const expandable = !key.endsWith('.js');
-      const isExpanded = this.state.expanded[key];
-      let primary = key;
-      if (expandable) {
-        primary += '/';
-      }
-      const row = (
+    let rowData = this.getRowData(results, level);
+    let nextIsTruncated = false;
+    if (rowData.length > MAX_RESULTS_TO_SHOW) {
+      rowData = rowData.filter(
+        ({fixed, regressed, newTest}) =>
+          fixed > 0 || regressed > 0 || newTest > 0
+      );
+      nextIsTruncated = true;
+    }
+    let rowsForLevel = [];
+    if (nextIsTruncated) {
+      rowsForLevel.push(
         <ListItem
-          divider
-          key={key}
-          button
-          disableRipple
-          onClick={expandable ? this.onClickRow(key) : undefined}
+          key={`truncationNotice`}
           style={{
             paddingLeft:
               this.props.theme.spacing.unit +
               level * this.props.theme.spacing.unit * 4,
           }}
         >
-          {expandable &&
-            <Avatar>
-              <Folder />
-            </Avatar>}
-          <ListItemText
-            primary={primary}
-            secondary={this.renderRowText(data)}
-          />
-          <ListItemSecondaryAction>
-            <IconButton aria-label="Rerun" onClick={this.onClickRun(results)}>
-              <Refresh />
-            </IconButton>
-          </ListItemSecondaryAction>
+          <ListItemText primary="Only showing results that have changed" />
         </ListItem>
       );
-      if (isExpanded) {
-        const rows = this.renderLevel(results, level + 1).map((item, index) =>
-          <Collapse
-            key={index}
-            in={this.state.expanded[key]}
-            transitionDuration="auto"
-            unmountOnExit
+    }
+
+    return rowsForLevel.concat(
+      rowData.map(data => {
+        const {results, key} = data;
+        const expandable = !key.endsWith('.js');
+        const isExpanded = this.state.expanded[key];
+        let primary = key;
+        if (expandable) {
+          primary += '/';
+        }
+        const row = (
+          <ListItem
+            divider
+            key={key}
+            button
+            disableRipple
+            onClick={expandable ? this.onClickRow(key) : undefined}
+            style={{
+              paddingLeft:
+                this.props.theme.spacing.unit +
+                level * this.props.theme.spacing.unit * 4,
+            }}
           >
-            {item}
-          </Collapse>
+            {expandable &&
+              <Avatar>
+                <Folder />
+              </Avatar>}
+            <ListItemText
+              primary={primary}
+              secondary={this.renderRowText(data)}
+            />
+            <ListItemSecondaryAction>
+              <IconButton aria-label="Rerun" onClick={this.onClickRun(results)}>
+                <Refresh />
+              </IconButton>
+            </ListItemSecondaryAction>
+          </ListItem>
         );
-        return [row, ...rows];
-      }
-      return [row];
-    });
+        if (isExpanded) {
+          const childRows = this.renderLevel(
+            results,
+            level + 1
+          ).map((item, index) =>
+            <Collapse
+              key={index}
+              in={this.state.expanded[key]}
+              transitionDuration="auto"
+              unmountOnExit
+            >
+              {item}
+            </Collapse>
+          );
+          return [row, ...childRows];
+        }
+        return [row];
+      })
+    );
   }
 
   render() {

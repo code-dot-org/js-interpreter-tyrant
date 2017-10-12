@@ -6,7 +6,7 @@ import Heroku from 'heroku-client';
 export default class SlaveManager {
   clientState = {
     slaves: [],
-    numThreads: 1,
+    numThreads: 8,
     formation: [],
   };
 
@@ -18,6 +18,7 @@ export default class SlaveManager {
       console.log('heroku api token present. Will use heroku for slaves');
       this.heroku = new Heroku({token: process.env.HEROKU_API_TOKEN});
     }
+    this.updateFormation();
   }
 
   provisionSlave(id) {
@@ -44,13 +45,14 @@ export default class SlaveManager {
     return this.clientState.slaves;
   }
 
-  getFormation = async () => {
-    if (!this.heroku) {
-      return [];
+  updateFormation = async () => {
+    let formation = [];
+    if (this.heroku) {
+      formation = await this.heroku.get(
+        `/apps/${process.env.HEROKU_APP_NAME}/formation`
+      );
     }
-    return await this.heroku.get(
-      `/apps/${process.env.HEROKU_APP_NAME}/formation`
-    );
+    this.setClientState({formation});
   };
 
   restartSlave = async slave => {
