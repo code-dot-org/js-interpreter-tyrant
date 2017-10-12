@@ -10,6 +10,8 @@ export default class SlaveManager {
     formation: [],
   };
 
+  childProcesses = {};
+
   constructor(io) {
     this.io = io;
     if (process.env.HEROKU_API_TOKEN) {
@@ -19,13 +21,18 @@ export default class SlaveManager {
   }
 
   provisionSlave(id) {
-    child_process.spawn('yarn', ['run', 'startSlave'], {
-      env: {
-        ...process.env,
-        SLAVE_ID: id,
-      },
-      stdio: 'inherit',
-    });
+    console.log('Starting slave', id);
+    this.childProcesses[id] = child_process.spawn(
+      'yarn',
+      ['run', 'startSlave'],
+      {
+        env: {
+          ...process.env,
+          SLAVE_ID: id,
+        },
+        stdio: 'inherit',
+      }
+    );
     this.setClientState({slaves: [...this.clientState.slaves, {id}]});
   }
 
@@ -51,6 +58,13 @@ export default class SlaveManager {
       await this.heroku.delete(
         `/apps/${process.env.HEROKU_APP_NAME}/dynos/${slave.id}`
       );
+    } else {
+      this.setClientState({
+        slaves: this.clientState.slaves.filter(s => s.id !== slave.id),
+      });
+      console.log('Restarting slave', slave.id);
+      this.emitToSlave(slave, 'SlaveRunner.kill');
+      this.provisionSlave(slave.id);
     }
   };
 
