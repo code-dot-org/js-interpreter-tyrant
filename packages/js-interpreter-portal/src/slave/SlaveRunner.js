@@ -1,9 +1,12 @@
+import throttle from 'lodash.throttle';
 import {ClientEvents} from '../constants';
 import {Repos} from './SlaveVersionManager';
 import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
 import {Events} from '@code-dot-org/js-interpreter-tyrant/dist/constants';
 import RPCInterface from '../server/RPCInterface';
 import {objectToArgs} from '../util';
+
+const MIN_MS_BETWEEN_EMIT = 1000;
 
 @RPCInterface()
 export default class SlaveRunner {
@@ -12,19 +15,28 @@ export default class SlaveRunner {
     numThreads: 8,
   };
 
+  emitQueue = [];
+
   constructor(versionManager) {
     this.versionManager = versionManager;
   }
 
   _onTyrantEvent = (eventName, data) => {
-    this.socket.emit(ClientEvents.TYRANT_EVENT, {
-      timestamp: new Date().getTime(),
+    const timestamp = new Date().getTime();
+    this.emitQueue.push({
+      timestamp,
       eventName,
       eventId: this.eventId++,
       slaveId: this.slaveId,
       data,
     });
+    this._emitQueuedEvents();
   };
+
+  _emitQueuedEvents = throttle(() => {
+    this.socket.emit(ClientEvents.TYRANT_EVENT, this.emitQueue);
+    this.emitQueue = [];
+  }, MIN_MS_BETWEEN_EMIT);
 
   setNumThreads = async ({numThreads}) => {
     this.setClientState({numThreads});
@@ -73,6 +85,7 @@ export default class SlaveRunner {
   }
 
   execute = async ({splitIndex, splitInto, tests}) => {
+    console.log('executing tests', tests);
     this.getTyrant(
       {
         splitIndex,

@@ -1,3 +1,4 @@
+import throttle from 'lodash.throttle';
 import EventEmitter from 'events';
 import {Events} from '@code-dot-org/js-interpreter-tyrant/dist/constants';
 import moment from 'moment-mini';
@@ -10,9 +11,11 @@ class TyrantEventQueue extends EventEmitter {
   queue = [];
   byEventName = {};
 
-  init() {
-    if (process.env.IS_CLIENT) {
-      Connection.on(ClientEvents.TYRANT_EVENT, event => {
+  processTyrantEventsQueue = [];
+  processTyrantEvents = throttle(() => {
+    const multiEmit = [];
+    this.processTyrantEventsQueue.forEach(events =>
+      events.forEach(event => {
         const {eventName} = event;
         if (!this.byEventName[eventName]) {
           this.byEventName[eventName] = [];
@@ -22,10 +25,24 @@ class TyrantEventQueue extends EventEmitter {
           eventName,
           timestamp: moment(new Date(event.timestamp)),
         };
-        this.queue.push(event);
-        this.byEventName[eventName].push(event);
+        multiEmit.push(event);
+        if (this.eventsToTrack.includes(eventName)) {
+          this.queue.push(event);
+          this.byEventName[eventName].push(event);
+        }
         this.emit('any', event);
         this.emit(eventName, event);
+      })
+    );
+    this.emit('multi', multiEmit);
+  }, 500);
+
+  init(eventsToTrack = []) {
+    this.eventsToTrack = eventsToTrack;
+    if (process.env.IS_CLIENT) {
+      Connection.on(ClientEvents.TYRANT_EVENT, events => {
+        this.processTyrantEventsQueue.push(events);
+        this.processTyrantEvents();
       });
     }
   }

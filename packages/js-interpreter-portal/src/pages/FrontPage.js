@@ -3,7 +3,6 @@ import RunCard from '../components/RunCard';
 import VersionSwitcher from '../components/VersionSwitcher';
 import SlavesCard from '../components/SlavesCard';
 import {Grid} from 'material-ui';
-import {grey} from 'material-ui/colors';
 import styled from 'styled-components';
 
 const Wrapper = styled(Grid).attrs({container: true, spacing: 24})`

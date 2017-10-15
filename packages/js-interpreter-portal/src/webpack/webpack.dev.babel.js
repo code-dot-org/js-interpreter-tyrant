@@ -2,9 +2,9 @@
  * DEVELOPMENT WEBPACK CONFIGURATION
  */
 
-import path from 'path';
-import webpack from 'webpack';
-import base from './webpack.base.babel';
+const path = require('path');
+const webpack = require('webpack');
+const base = require('./webpack.base.babel');
 
 const plugins = [
   new webpack.optimize.CommonsChunkPlugin({

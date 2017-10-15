@@ -59,6 +59,7 @@ class GlobInput extends Component {
               this.props.onClickRun(
                 this.state.value
                   .split(' ')
+                  .filter(s => !!s)
                   .map(fn => `tyrant/test262/test/${fn}`)
               )}
           >
@@ -112,15 +113,25 @@ export default class RunCard extends Component {
     });
   }
 
-  onTick = ({slaveId, data: {test, minutes}}) => {
-    const slaveState = this.getSlaveState(slaveId);
-    this.setSlaveState(slaveId, {
-      results: [...(slaveState.results || []), test],
+  onMaybeTick = events => {
+    const newResults = {};
+    events.forEach(event => {
+      if (event.eventName === Events.TICK) {
+        const {slaveId, data: {test}} = event;
+        newResults[slaveId] = newResults[slaveId] || [];
+        newResults[slaveId].push(test);
+      }
+    });
+    Object.keys(newResults).forEach(slaveId => {
+      const slaveState = this.getSlaveState(slaveId);
+      this.setSlaveState(slaveId, {
+        results: [...(slaveState.results || []), ...newResults[slaveId]],
+      });
     });
   };
 
   async componentDidMount() {
-    TyrantEventQueue.on(Events.TICK, this.onTick);
+    TyrantEventQueue.on('multi', this.onMaybeTick);
     Connection.MasterRunner.onClientStateChange(newState => {
       this.setState(newState);
     });

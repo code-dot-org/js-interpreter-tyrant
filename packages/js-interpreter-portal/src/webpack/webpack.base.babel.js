@@ -2,17 +2,19 @@
  * COMMON WEBPACK CONFIGURATION
  */
 
-import path from 'path';
-import webpack from 'webpack';
+const path = require('path');
+const webpack = require('webpack');
 
-export default options => ({
+module.exports = options => ({
   entry: options.entry,
-  output: {
-    // Compile into js/build.js
-    path: path.resolve(process.cwd(), 'build'),
-    publicPath: '/',
-    ...options.output, // Merge with env dependent settings
-  },
+  output: Object.assign(
+    {
+      // Compile into js/build.js
+      path: path.resolve(process.cwd(), 'build'),
+      publicPath: '/',
+    },
+    options.output
+  ), // Merge with env dependent settings
   module: {
     loaders: [
       {

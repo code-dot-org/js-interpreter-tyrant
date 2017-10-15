@@ -1,5 +1,9 @@
+import throttle from 'lodash.throttle';
+
 export const EventNames = [];
 export const ClassNames = [];
+
+const EMIT_CLIENT_STATE_THROTTLE = 100;
 
 export default function RPCInterface({clientStateChangeEvent, type} = {}) {
   return cls => {
@@ -20,6 +24,13 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
         this.slaveManager = slaveManager;
         this.clientState = this.clientState || {};
       }
+
+      _emitClientState = throttle(
+        () =>
+          this.io.to('clients').emit(clientStateChangeEvent, this.clientState),
+        EMIT_CLIENT_STATE_THROTTLE
+      );
+
       setClientState(stateUpdates) {
         this.clientState = {...this.clientState, ...stateUpdates};
         this.io.to('clients').emit(clientStateChangeEvent, this.clientState);
@@ -35,15 +46,21 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
         this.clientState = this.clientState || {};
       }
 
+      _emitClientState = throttle(
+        () =>
+          this.socket.emit(clientStateChangeEvent, {
+            ...this.clientState,
+            slaveId: this.slaveId,
+          }),
+        EMIT_CLIENT_STATE_THROTTLE
+      );
+
       setClientState(stateUpdates) {
         this.clientState = {
           ...this.clientState,
           ...stateUpdates,
         };
-        this.socket.emit(clientStateChangeEvent, {
-          ...this.clientState,
-          slaveId: this.slaveId,
-        });
+        this._emitClientState();
       }
 
       getClientState = async () => ({

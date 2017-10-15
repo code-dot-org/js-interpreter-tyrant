@@ -8,7 +8,7 @@ import {blue, orange} from 'material-ui/colors';
 
 import Connection from './Connection';
 import AppWrapper from '../AppWrapper';
-import TyrantEventQueue from './TyrantEventQueue';
+import TyrantEventQueue, {Events} from './TyrantEventQueue';
 
 const theme = createMuiTheme({
   palette: {
@@ -30,7 +30,7 @@ const theme = createMuiTheme({
 const history = createHistory();
 Connection.initClient({
   callback: () => {
-    TyrantEventQueue.init();
+    TyrantEventQueue.init([Events.LOG, Events.WRITE]);
     ReactDOM.render(
       <Router history={history}>
         <MuiThemeProvider theme={theme}>
