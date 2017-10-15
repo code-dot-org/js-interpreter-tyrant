@@ -85,7 +85,7 @@ export default class SlavesCard extends Component {
     if (this.state.formation) {
       cost = this.state.formation.reduce((sum, dynoType) => {
         const runningTimeMs =
-          new Date().getTime() - new Date(dynoType.updatedAt).getTime();
+          new Date().getTime() - new Date(dynoType.updated_at).getTime();
         const runningTimeMonths = runningTimeMs / 1000 / 60 / 60 / 24 / 30;
         return (
           sum + dynoType.quantity * runningTimeMonths * costs[dynoType.size]
@@ -105,7 +105,7 @@ export default class SlavesCard extends Component {
             <CardContent>
               <NumberDropdown
                 label="Num Slaves"
-                start={1}
+                start={0}
                 count={40}
                 id="num-slaves"
                 value={this.state.slaves.length}
