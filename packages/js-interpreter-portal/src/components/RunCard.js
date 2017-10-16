@@ -181,7 +181,7 @@ export default class RunCard extends Component {
     };
     Object.values(this.state.slaves).forEach(slave => {
       state.numTests += slave.numTests || 1;
-      state.completed += slave.completed;
+      state.completed += slave.completed || 0;
       state.minutes = Math.max(state.minutes, slave.minutes || 0);
       if (slave.results) {
         state.results = state.results.concat(slave.results);

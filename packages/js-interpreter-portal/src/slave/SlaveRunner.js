@@ -13,6 +13,7 @@ export default class SlaveRunner {
   eventId = 1;
   clientState = {
     numThreads: 8,
+    forwardAllTyrantEvents: false,
   };
 
   emitQueue = [];
@@ -40,6 +41,10 @@ export default class SlaveRunner {
 
   setNumThreads = async ({numThreads}) => {
     this.setClientState({numThreads});
+  };
+
+  setForwardAllTyrantEvents = async ({forwardAllTyrantEvents}) => {
+    this.setClientState({forwardAllTyrantEvents});
   };
 
   saveResults = async () => {
@@ -102,17 +107,25 @@ export default class SlaveRunner {
           )
         : []
     )
-      .setEventCallback((...args) => this._onTyrantEvent(...args))
+      .setEventCallback((eventName, data) => {
+        if (this.clientState.forwardAllTyrantEvents) {
+          this._onTyrantEvent(...args);
+        }
+      })
       .on(Events.STARTED_EXECUTION, () => this.setClientState({running: true}))
       .on(Events.STARTED_RUNNING, ({numTests}) =>
         this.setClientState({completed: 0, numTests})
       )
-      .on(Events.TICK, ({minutes}) =>
+      .on(Events.TICK, data => {
+        const {minutes, test: {isFix, isRegression, isNew}} = data;
+        if (isFix || isRegression || isNew) {
+          this._onTyrantEvent(Events.TICK, data);
+        }
         this.setClientState({
           completed: this.clientState.completed + 1,
           minutes,
-        })
-      )
+        });
+      })
       .on(Events.FINISHED_EXECUTION, () =>
         this.setClientState({running: false})
       )
