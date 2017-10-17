@@ -89,12 +89,14 @@ export default class SlaveRunner {
     return new Tyrant(cliArgs);
   }
 
-  execute = async ({splitIndex, splitInto, tests}) => {
+  execute = async ({splitIndex, splitInto, tests, rerun}) => {
     console.log('executing tests', tests);
     this.getTyrant(
       {
         splitIndex,
         splitInto,
+        rerun,
+        retries: 3,
         run: true,
         noExit: true,
         diff: true,
@@ -107,7 +109,7 @@ export default class SlaveRunner {
           )
         : []
     )
-      .setEventCallback((eventName, data) => {
+      .setEventCallback((...args) => {
         if (this.clientState.forwardAllTyrantEvents) {
           this._onTyrantEvent(...args);
         }
@@ -129,6 +131,12 @@ export default class SlaveRunner {
       .on(Events.FINISHED_EXECUTION, () =>
         this.setClientState({running: false})
       )
+      .on(Events.RERUNNING_TESTS, ({files, retriesLeft}) => {
+        this._onTyrantEvent(Events.RERUNNING_TESTS, {
+          files: Array.from(files),
+          retriesLeft,
+        });
+      })
       .execute();
   };
 }

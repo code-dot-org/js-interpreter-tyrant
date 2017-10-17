@@ -1,5 +1,8 @@
+import throttle from 'lodash.throttle';
 import SocketIOClient from 'socket.io-client';
 import {EventNames} from '../server/RPCInterface';
+
+const CLIENT_STATE_THROTTLE = 100;
 
 class Connection {
   on(...args) {
@@ -19,7 +22,7 @@ class Connection {
           this[cls] = {};
         }
         this[cls].onClientStateChange = func =>
-          this.on(`${cls}.STATE_CHANGE`, func);
+          this.on(`${cls}.STATE_CHANGE`, throttle(func, CLIENT_STATE_THROTTLE));
       });
     });
     this.conn.emit('getEventNames', eventNames => {

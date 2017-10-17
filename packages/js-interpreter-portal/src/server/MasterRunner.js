@@ -21,12 +21,13 @@ export default class MasterRunner {
     );
   };
 
-  execute = async ({tests}) => {
+  execute = async ({tests, rerun}) => {
     this.slaveManager.slaves.forEach((slave, splitIndex, slaves) => {
       this.slaveManager.getSocketFor(slave).emit('SlaveRunner.execute', {
         splitIndex,
         splitInto: slaves.length,
         tests,
+        rerun,
       });
     });
   };

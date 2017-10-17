@@ -5,4 +5,5 @@ export const Events = {
   WRITE: 'WRITE',
   TICK: 'TICK',
   STARTED_RUNNING: 'STARTED_RUNNING',
+  RERUNNING_TESTS: 'RERUNNING_TESTS',
 };

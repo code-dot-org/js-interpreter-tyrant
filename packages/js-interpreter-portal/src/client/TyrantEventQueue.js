@@ -34,6 +34,7 @@ class TyrantEventQueue extends EventEmitter {
         this.emit(eventName, event);
       })
     );
+    this.processTyrantEventsQueue = [];
     this.emit('multi', multiEmit);
   }, 500);
 

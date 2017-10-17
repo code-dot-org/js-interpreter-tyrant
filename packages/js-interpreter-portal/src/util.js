@@ -3,7 +3,7 @@ export function objectToArgs(obj = {}, positional = []) {
   Object.keys(obj).forEach(key => {
     const val = obj[key];
     const flag = '--' + key;
-    if (typeof val === 'boolean') {
+    if (typeof val === 'boolean' || val === undefined) {
       if (val) {
         args.push(flag);
       }

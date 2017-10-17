@@ -167,6 +167,10 @@ export default class Tyrant extends EventEmitter {
     }
     if (this.argv._.length > 0) {
       execSync(`cp ${this.RESULTS_FILE} ${this.RESULTS_FILE}.old.json`);
+      this.emit(Events.RERUNNING_TESTS, {
+        files: new Set(this.argv._ || []),
+        retriesLeft: this.argv.retries - this.numTries,
+      });
       return this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
     } else {
       this.log('nothing to rerun, there were no regressions');

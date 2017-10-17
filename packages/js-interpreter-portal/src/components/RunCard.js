@@ -1,3 +1,4 @@
+import moment from 'moment-mini';
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import {
@@ -54,7 +55,7 @@ class GlobInput extends Component {
           <Button
             color="primary"
             raised
-            disabled={this.props.slaveState.running || !this.props.canRun}
+            disabled={this.props.slaveState.running > 0 || !this.props.canRun}
             onClick={() =>
               this.props.onClickRun(
                 this.state.value
@@ -67,7 +68,7 @@ class GlobInput extends Component {
           </Button>
           <Button
             raised
-            disabled={!this.props.slaveState.running}
+            disabled={this.props.slaveState.running === 0}
             onClick={this.props.onClickKill}
           >
             Stop
@@ -113,13 +114,28 @@ export default class RunCard extends Component {
     });
   }
 
-  onMaybeTick = events => {
+  onTyrantEvents = events => {
     const newResults = {};
     events.forEach(event => {
-      if (event.eventName === Events.TICK) {
-        const {slaveId, data: {test}} = event;
+      const {slaveId, eventName, data} = event;
+      if (eventName === Events.TICK) {
+        const {test} = data;
         newResults[slaveId] = newResults[slaveId] || [];
         newResults[slaveId].push(test);
+      } else if (eventName === Events.RERUNNING_TESTS) {
+        const {files, retriesLeft} = data;
+        const slaveState = this.getSlaveState(slaveId);
+        const filesToRemove = new Set(
+          files.map(file => file.split('test262')[1])
+        );
+        const results = (slaveState.results || [])
+          .filter(
+            oldTest => !filesToRemove.has(oldTest.file.split('test262')[1])
+          );
+        this.setSlaveState(slaveId, {
+          retriesLeft,
+          results,
+        });
       }
     });
     Object.keys(newResults).forEach(slaveId => {
@@ -131,7 +147,7 @@ export default class RunCard extends Component {
   };
 
   async componentDidMount() {
-    TyrantEventQueue.on('multi', this.onMaybeTick);
+    TyrantEventQueue.on('multi', this.onTyrantEvents);
     Connection.MasterRunner.onClientStateChange(newState => {
       this.setState(newState);
     });
@@ -162,9 +178,9 @@ export default class RunCard extends Component {
   };
 
   onClickRerunTests = async tests => {
-    this.run(tests);
+    Connection.MasterRunner.execute({tests, rerun: true});
   };
-  onClickRun = () => this.run(this.state.testGlob.split(' '));
+  onClickRun = tests => this.run(tests);
   onClickKill = async () => {
     await Connection.MasterRunner.kill();
   };
@@ -176,7 +192,7 @@ export default class RunCard extends Component {
       numTests: 1,
       completed: 0,
       results: [],
-      running: false,
+      running: 0,
       minutes: 0,
     };
     Object.values(this.state.slaves).forEach(slave => {
@@ -187,7 +203,7 @@ export default class RunCard extends Component {
         state.results = state.results.concat(slave.results);
       }
       if (slave.running) {
-        state.running = true;
+        state.running += 1;
       }
     });
     return state;
@@ -204,15 +220,18 @@ export default class RunCard extends Component {
       (found, test) => found || test.isFix || test.isRegression || test.isNew,
       false
     );
-    const minutes = Math.floor(state.minutes);
-    const seconds = Math.floor((state.minutes - minutes) * 60);
+    const numRegressions = state.results.reduce(
+      (num, test) => num + (test.isRegression ? 1 : 0),
+      0
+    );
+    const timeRemaining = moment.duration({minutes: state.minutes});
     return (
       <MainCard>
         <CardHeader title="Test Results" />
         <CardContent>
           <GlobInput
             slaveState={state}
-            onClickRun={this.onClickRerunTests}
+            onClickRun={this.onClickRun}
             onClickKill={this.onClickKill}
             canRun={this.state.canRun}
           />
@@ -247,7 +266,7 @@ export default class RunCard extends Component {
               <div>
                 <CardContent>
                   {state.results.length === 0 &&
-                    !state.running &&
+                    !state.running > 0 &&
                     <div style={{textAlign: 'center'}}>
                       <Typography type="body1">
                         Run tests to see new results or...
@@ -260,7 +279,7 @@ export default class RunCard extends Component {
                         Load New Results
                       </Button>
                     </div>}
-                  {state.running &&
+                  {state.running > 0 &&
                     <div style={{display: 'flex', alignItems: 'center'}}>
                       <div style={{flexBasis: '100%'}}>
                         <LinearProgress
@@ -285,10 +304,10 @@ export default class RunCard extends Component {
                           /{state.numTests}
                         </span>
                         <Typography color="accent" type="caption">
-                          {minutes
-                            ? `${minutes}m`
-                            : seconds ? `${seconds}s` : '? mins'}{' '}
-                          left
+                          {timeRemaining.humanize()} left
+                        </Typography>
+                        <Typography color="accent" type="caption">
+                          {state.running} slave running
                         </Typography>
                       </div>
                     </div>}
@@ -300,9 +319,18 @@ export default class RunCard extends Component {
                   />}
                 <CardActions>
                   <Button
+                    color="primary"
+                    raised
+                    disabled={numRegressions === 0 || state.running > 0}
+                    onClick={this.onClickRerunTests}
+                  >
+                    Rerun {numRegressions} Tests
+                  </Button>
+
+                  <Button
                     disabled={
                       state.results.length === 0 ||
-                      state.running ||
+                      state.running > 0 ||
                       !hasChangedResults
                     }
                     color="primary"
