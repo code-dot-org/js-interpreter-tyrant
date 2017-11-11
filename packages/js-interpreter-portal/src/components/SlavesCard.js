@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
   Typography,
   Select,
@@ -11,10 +11,16 @@ import {
   CardContent,
   FormControl,
   InputLabel,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Table,
   withStyles,
 } from 'material-ui';
 import Connection from '../client/Connection';
 import MainCard from './MainCard';
+import moment from 'moment-mini';
 
 const NumberDropdown = withStyles({
   formControl: {
@@ -40,9 +46,7 @@ const NumberDropdown = withStyles({
   }
   return (
     <FormControl className={classes.formControl}>
-      <InputLabel htmlFor={id}>
-        {label}
-      </InputLabel>
+      <InputLabel htmlFor={id}>{label}</InputLabel>
       <Select value={value} onChange={onChange} input={<Input id={id} />}>
         {items}
       </Select>
@@ -65,13 +69,13 @@ export default class SlavesCard extends Component {
     Connection.SlaveManager.onClientStateChange(state => this.setState(state));
   }
 
-  onChangeNumSlaves = async ({target: {value}}) => {
-    this.setState({requestedNumSlaves: value});
-    await Connection.SlaveManager.setConfig({numSlaves: value});
+  onChangeNumSlaves = async ({ target: { value } }) => {
+    this.setState({ requestedNumSlaves: value });
+    await Connection.SlaveManager.setConfig({ numSlaves: value });
   };
 
-  onChangeNumThreads = async ({target: {value}}) => {
-    await Connection.SlaveManager.setConfig({numThreads: value});
+  onChangeNumThreads = async ({ target: { value } }) => {
+    await Connection.SlaveManager.setConfig({ numThreads: value });
   };
 
   render() {
@@ -125,18 +129,42 @@ export default class SlavesCard extends Component {
         <CardContent>
           <Card>
             <List>
-              {this.state.slaves.map(slave =>
+              {this.state.slaves.map(slave => (
                 <ListItem key={slave.id} divider>
                   {slave.id}
                 </ListItem>
-              )}
+              ))}
             </List>
-            {this.state.formation &&
-              <CardContent>
-                <pre>
-                  {JSON.stringify(this.state.formation, null, 2)}
-                </pre>
-              </CardContent>}
+          </Card>
+        </CardContent>
+        <CardContent>
+          Formation
+          <Card>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Quantity</TableCell>
+                  <TableCell>Size</TableCell>
+                  <TableCell>Updated At</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {this.state.formation &&
+                  this.state.formation.map(
+                    ({ type, quantity, size, updated_at }) => (
+                      <TableRow>
+                        <TableCell>{type}</TableCell>
+                        <TableCell>{quantity}</TableCell>
+                        <TableCell>{size}</TableCell>
+                        <TableCell>
+                          {moment(new Date(updated_at)).format('LT')}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  )}
+              </TableBody>
+            </Table>
           </Card>
         </CardContent>
       </MainCard>
