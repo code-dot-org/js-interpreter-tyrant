@@ -4,7 +4,7 @@ import SlaveVersionManager from './SlaveVersionManager';
 import SlaveRunner from './SlaveRunner';
 
 export default class Slave {
-  constructor(socket, {id, master}) {
+  constructor(socket, { id, master }) {
     this.id = id;
     this.master = master;
     this.socket = socket;
@@ -13,7 +13,7 @@ export default class Slave {
     this.runner.listenTo(socket);
     this.versionManager.listenTo(socket);
     console.log('registering slave', this.id, 'with master');
-    Connection.SlaveManager.registerSlave({id: this.id});
-    this.versionManager.update();
+    Connection.SlaveManager.registerSlave({ id: this.id });
+    this.versionManager.matchMasterState();
   }
 }

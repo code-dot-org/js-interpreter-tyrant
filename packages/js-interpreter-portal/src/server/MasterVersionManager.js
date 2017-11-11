@@ -1,19 +1,23 @@
 import RPCInterface from './RPCInterface';
 import SlaveVersionManager from '../slave/SlaveVersionManager';
 
-@RPCInterface({type: 'master'})
+@RPCInterface({ type: 'master' })
 export default class MasterVersionManager {
   static SlaveClass = SlaveVersionManager;
 
   clientState = {
-    lastLog: '',
-    currentVersion: null,
-    versions: [],
-    updating: false,
+    operationLog: [],
   };
+
+  logOperation(opType, ...args) {
+    this.setClientState({
+      operationLog: [...this.clientState.operationLog, { opType, args }],
+    });
+  }
 
   update = async () => {
     this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
+    this.logOperation('update');
   };
 
   selectVersion = async version => {
@@ -21,10 +25,12 @@ export default class MasterVersionManager {
       'SlaveVersionManager.selectVersion',
       version
     );
+    this.logOperation('selectVersion', version);
   };
 
   mergeCommit = async sha => {
     this.slaveManager.emitToAllSlaves('SlaveVersionManager.mergeCommit', sha);
+    this.logOperation('mergeCommit', sha);
   };
 
   pushUpstream = async () => {

@@ -11,9 +11,10 @@ import Git, {
   Cred,
 } from 'nodegit';
 import ChildProcess from 'child_process';
-import {promisify} from 'util';
+import { promisify } from 'util';
 import rimraf from 'rimraf';
 import RPCInterface from '../server/RPCInterface';
+import Connection from '../client/Connection';
 
 const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
@@ -55,7 +56,28 @@ export default class SlaveVersionManager {
 
   log(msg) {
     console.log(msg);
-    this.setClientState({lastLog: msg});
+    this.setClientState({ lastLog: msg });
+  }
+
+  async matchMasterState() {
+    const masterState = await Connection.MasterVersionManager.getClientState();
+    for (let op of masterState.operationLog) {
+      const { opType, args } = op;
+      await this[opType](...args);
+    }
+  }
+
+  async withLock(func) {
+    while (this.lock) {
+      await this.lock;
+    }
+
+    this.lock = func();
+    if (!(this.lock instanceof Promise)) {
+      throw new Error('withLock must be called with an async function');
+    }
+    await this.lock;
+    this.lock = null;
   }
 
   ensureRemotes = async () => {
@@ -92,7 +114,7 @@ export default class SlaveVersionManager {
     ];
     for (const cmd of cmds) {
       this.log(cmd);
-      await exec(cmd, {cwd: localPath});
+      await exec(cmd, { cwd: localPath });
     }
     this.log('done');
   };
@@ -156,7 +178,9 @@ export default class SlaveVersionManager {
   };
 
   mergeUpstreamMaster = async () => {
-    this.repo.mergeBranches('master', 'origin/master');
+    await this.withLock(async () => {
+      this.repo.mergeBranches('master', 'origin/master');
+    });
   };
 
   update = async options => {
@@ -164,104 +188,114 @@ export default class SlaveVersionManager {
       return this.clientState;
     }
     options = options || {};
-    const {reset} = options;
+    const { reset } = options;
     this.log('Updating interpreter versions');
-    this.setClientState({updating: true});
-    const localPath = this.getLocalRepoPath(this.repoConfig);
-    if (!reset && fs.existsSync(localPath)) {
-      this.repo = await Repository.open(localPath);
-    } else {
-      await this.cloneRepo();
-    }
-    const versions = await this.getVersions();
-    let head = await this.repo.getHeadCommit();
-    if (!head) {
-      console.log("well this repo got screwed up... let's re-clone it!");
-      await this.cloneRepo();
-      head = await this.repo.getHeadCommit();
-    }
-    await this.ensureRemotes();
-    this.log('reading commit history');
-    let commits = await this.getCommitLog(Repos.CODE_DOT_ORG.name);
-    const commitsBySha = {};
-    commits.forEach(commit => (commitsBySha[commit.sha] = commit));
-    let upstream = await this.getCommitLog(
-      Repos.NeilFraser.name,
-      await this.repo.getReferenceCommit(
-        `refs/remotes/${Repos.NeilFraser.name}/master`
-      )
-    );
-    commits = commits.map(commit => ({version: commit.summary, commit}));
-    for (let i = 0; i < upstream.length; i++) {
-      let upstreamCommit = upstream[i];
-      let originCommit = commitsBySha[upstreamCommit.sha];
-      upstreamCommit.merged = !!originCommit;
-      upstream[i] = {version: upstreamCommit.summary, commit: upstreamCommit};
-    }
-    const currentVersion = commitToJSON(head);
-    this.setClientState({
-      currentVersion,
-      versions,
-      commits,
-      upstream,
-      updating: false,
+    this.setClientState({ updating: true });
+
+    await this.withLock(async () => {
+      const localPath = this.getLocalRepoPath(this.repoConfig);
+      if (!reset && fs.existsSync(localPath)) {
+        this.repo = await Repository.open(localPath);
+      } else {
+        await this.cloneRepo();
+      }
+      const versions = await this.getVersions();
+      let head = await this.repo.getHeadCommit();
+      if (!head) {
+        console.log("well this repo got screwed up... let's re-clone it!");
+        await this.cloneRepo();
+        head = await this.repo.getHeadCommit();
+      }
+      await this.ensureRemotes();
+      this.log('reading commit history');
+      let commits = await this.getCommitLog(Repos.CODE_DOT_ORG.name);
+      const commitsBySha = {};
+      commits.forEach(commit => (commitsBySha[commit.sha] = commit));
+      let upstream = await this.getCommitLog(
+        Repos.NeilFraser.name,
+        await this.repo.getReferenceCommit(
+          `refs/remotes/${Repos.NeilFraser.name}/master`
+        )
+      );
+      commits = commits.map(commit => ({ version: commit.summary, commit }));
+      for (let i = 0; i < upstream.length; i++) {
+        let upstreamCommit = upstream[i];
+        let originCommit = commitsBySha[upstreamCommit.sha];
+        upstreamCommit.merged = !!originCommit;
+        upstream[i] = {
+          version: upstreamCommit.summary,
+          commit: upstreamCommit,
+        };
+      }
+      const currentVersion = commitToJSON(head);
+      this.setClientState({
+        currentVersion,
+        versions,
+        commits,
+        upstream,
+        updating: false,
+      });
+      this.log('Everything is up to date!');
     });
-    this.log('Everything is up to date!');
     return this.clientState;
   };
 
   selectVersion = async sha => {
-    const head = await this.repo.getCommit(sha);
-    await Checkout.tree(this.repo, head, {
-      checkoutStrategy: Checkout.STRATEGY.FORCE,
-    });
-    this.repo.setHeadDetached(
-      sha,
-      this.repo.defaultSignature,
-      'Checkout: HEAD ' + sha
-    );
-    const currentVersion = {
-      sha: head.sha(),
-      summary: head.summary(),
-      time: head.timeMs(),
-    };
-    this.setClientState({currentVersion});
-    return currentVersion;
-  };
-
-  mergeCommit = async sha => {
-    const commitToMerge = await this.repo.getCommit(sha);
-    if (!commitToMerge) {
-      throw new Error('Attempting to merge non-existent commit', sha);
-    }
-    const master = await this.repo.getMasterCommit();
-    const index = await Merge.commits(this.repo, master, commitToMerge);
-    if (index.hasConflict) {
-      this.log('Unable to merge. Found conflict.');
-    } else {
-      const oid = await index.writeTreeTo(this.repo);
-      const masterBranch = await this.repo.getBranch('master');
-      const commitId = await this.repo.createCommit(
-        masterBranch.name(),
-        Signature.now('Tyrant', 'paul@code.org'),
-        Signature.now('Tyrant', 'paul@code.org'),
-        `Merge upstream commit ${sha} into master`,
-        oid,
-        [master, commitToMerge]
-      );
-      this.log(`Successfully merged commit ${commitId}`);
-      const head = await this.repo.getMasterCommit();
+    await this.withLock(async () => {
+      const head = await this.repo.getCommit(sha);
       await Checkout.tree(this.repo, head, {
         checkoutStrategy: Checkout.STRATEGY.FORCE,
       });
+      this.repo.setHeadDetached(
+        sha,
+        this.repo.defaultSignature,
+        'Checkout: HEAD ' + sha
+      );
       const currentVersion = {
         sha: head.sha(),
         summary: head.summary(),
         time: head.timeMs(),
       };
-      this.setClientState({currentVersion});
-      this.update();
-    }
+      this.setClientState({ currentVersion });
+    });
+    return this.clientState.currentVersion;
+  };
+
+  mergeCommit = async sha => {
+    await this.withLock(async () => {
+      const commitToMerge = await this.repo.getCommit(sha);
+      if (!commitToMerge) {
+        throw new Error('Attempting to merge non-existent commit', sha);
+      }
+      const master = await this.repo.getMasterCommit();
+      const index = await Merge.commits(this.repo, master, commitToMerge);
+      if (index.hasConflict) {
+        this.log('Unable to merge. Found conflict.');
+      } else {
+        const oid = await index.writeTreeTo(this.repo);
+        const masterBranch = await this.repo.getBranch('master');
+        const commitId = await this.repo.createCommit(
+          masterBranch.name(),
+          Signature.now('Tyrant', 'paul@code.org'),
+          Signature.now('Tyrant', 'paul@code.org'),
+          `Merge upstream commit ${sha} into master`,
+          oid,
+          [master, commitToMerge]
+        );
+        this.log(`Successfully merged commit ${commitId}`);
+        const head = await this.repo.getMasterCommit();
+        await Checkout.tree(this.repo, head, {
+          checkoutStrategy: Checkout.STRATEGY.FORCE,
+        });
+        const currentVersion = {
+          sha: head.sha(),
+          summary: head.summary(),
+          time: head.timeMs(),
+        };
+        this.setClientState({ currentVersion });
+        this.update();
+      }
+    });
   };
 
   getLocalRepoPath(repoConfig, extraPath) {
