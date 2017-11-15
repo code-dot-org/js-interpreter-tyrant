@@ -18,3 +18,23 @@ export function objectToArgs(obj = {}, positional = []) {
 export function shortTestName(path) {
   return path.split('test262/test/')[1];
 }
+
+export class Lock {
+  constructor(name) {
+    this.name = name;
+    this.lock = null;
+  }
+
+  async waitForLock(func) {
+    while (this.lock) {
+      await this.lock;
+    }
+
+    this.lock = func();
+    if (!(this.lock instanceof Promise)) {
+      throw new Error('withLock must be called with an async function');
+    }
+    await this.lock;
+    this.lock = null;
+  }
+}

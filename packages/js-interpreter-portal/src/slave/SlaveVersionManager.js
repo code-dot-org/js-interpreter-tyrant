@@ -15,6 +15,7 @@ import { promisify } from 'util';
 import rimraf from 'rimraf';
 import RPCInterface from '../server/RPCInterface';
 import Connection from '../client/Connection';
+import { rootLock } from './locks';
 
 const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
@@ -65,19 +66,6 @@ export default class SlaveVersionManager {
       const { opType, args } = op;
       await this[opType](...args);
     }
-  }
-
-  async withLock(func) {
-    while (this.lock) {
-      await this.lock;
-    }
-
-    this.lock = func();
-    if (!(this.lock instanceof Promise)) {
-      throw new Error('withLock must be called with an async function');
-    }
-    await this.lock;
-    this.lock = null;
   }
 
   ensureRemotes = async () => {
@@ -178,7 +166,7 @@ export default class SlaveVersionManager {
   };
 
   mergeUpstreamMaster = async () => {
-    await this.withLock(async () => {
+    await rootLock.waitForLock(async () => {
       this.repo.mergeBranches('master', 'origin/master');
     });
   };
@@ -192,7 +180,7 @@ export default class SlaveVersionManager {
     this.log('Updating interpreter versions');
     this.setClientState({ updating: true });
 
-    await this.withLock(async () => {
+    await rootLock.waitForLock(async () => {
       const localPath = this.getLocalRepoPath(this.repoConfig);
       if (!reset && fs.existsSync(localPath)) {
         this.repo = await Repository.open(localPath);
@@ -241,7 +229,7 @@ export default class SlaveVersionManager {
   };
 
   selectVersion = async sha => {
-    await this.withLock(async () => {
+    await rootLock.waitForLock(async () => {
       const head = await this.repo.getCommit(sha);
       await Checkout.tree(this.repo, head, {
         checkoutStrategy: Checkout.STRATEGY.FORCE,
@@ -262,7 +250,7 @@ export default class SlaveVersionManager {
   };
 
   mergeCommit = async sha => {
-    await this.withLock(async () => {
+    await rootLock.waitForLock(async () => {
       const commitToMerge = await this.repo.getCommit(sha);
       if (!commitToMerge) {
         throw new Error('Attempting to merge non-existent commit', sha);

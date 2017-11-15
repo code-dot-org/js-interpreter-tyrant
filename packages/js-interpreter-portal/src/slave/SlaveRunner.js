@@ -1,10 +1,11 @@
 import throttle from 'lodash.throttle';
-import {ClientEvents} from '../constants';
-import {Repos} from './SlaveVersionManager';
+import { ClientEvents } from '../constants';
+import { Repos } from './SlaveVersionManager';
 import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
-import {Events} from '@code-dot-org/js-interpreter-tyrant/dist/constants';
+import { Events } from '@code-dot-org/js-interpreter-tyrant/dist/constants';
 import RPCInterface from '../server/RPCInterface';
-import {objectToArgs} from '../util';
+import { objectToArgs } from '../util';
+import { rootLock } from './locks';
 
 const MIN_MS_BETWEEN_EMIT = 1000;
 
@@ -39,16 +40,16 @@ export default class SlaveRunner {
     this.emitQueue = [];
   }, MIN_MS_BETWEEN_EMIT);
 
-  setNumThreads = async ({numThreads}) => {
-    this.setClientState({numThreads});
+  setNumThreads = async ({ numThreads }) => {
+    this.setClientState({ numThreads });
   };
 
-  setForwardAllTyrantEvents = async ({forwardAllTyrantEvents}) => {
-    this.setClientState({forwardAllTyrantEvents});
+  setForwardAllTyrantEvents = async ({ forwardAllTyrantEvents }) => {
+    this.setClientState({ forwardAllTyrantEvents });
   };
 
   saveResults = async () => {
-    await this.getTyrant({save: true}).execute();
+    await this.getTyrant({ save: true }).execute();
   };
 
   getSavedResults = async () => {
@@ -59,13 +60,15 @@ export default class SlaveRunner {
     const tyrant = this.getTyrant();
     return tyrant
       .getNewResults()
-      .map(test => ({...test, ...tyrant.getTestDiff(test)}))
-      .filter(({isNew, isFix, isRegression}) => isNew || isFix || isRegression);
+      .map(test => ({ ...test, ...tyrant.getTestDiff(test) }))
+      .filter(
+        ({ isNew, isFix, isRegression }) => isNew || isFix || isRegression
+      );
   };
 
   kill = async () => {
     console.log('Killing slave process.');
-    this.setClientState({running: false});
+    this.setClientState({ running: false });
     await new Promise(resolve =>
       setTimeout(() => resolve(process.exit(1)), 1000)
     );
@@ -89,54 +92,60 @@ export default class SlaveRunner {
     return new Tyrant(cliArgs);
   }
 
-  execute = async ({splitIndex, splitInto, tests, rerun}) => {
-    console.log('executing tests', tests);
-    this.getTyrant(
-      {
-        splitIndex,
-        splitInto,
-        rerun,
-        retries: 3,
-        run: true,
-        noExit: true,
-        diff: true,
-        progress: true,
-        threads: this.clientState.numThreads,
-      },
-      tests
-        ? tests.map(path =>
-            this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG, path)
-          )
-        : []
-    )
-      .setEventCallback((...args) => {
-        if (this.clientState.forwardAllTyrantEvents) {
-          this._onTyrantEvent(...args);
-        }
-      })
-      .on(Events.STARTED_EXECUTION, () => this.setClientState({running: true}))
-      .on(Events.STARTED_RUNNING, ({numTests}) =>
-        this.setClientState({completed: 0, numTests})
+  execute = async ({ splitIndex, splitInto, tests, rerun }) => {
+    rootLock.waitForLock(async () => {
+      console.log('executing tests', tests);
+      const executionPromise = this.getTyrant(
+        {
+          splitIndex,
+          splitInto,
+          rerun,
+          retries: 3,
+          run: true,
+          noExit: true,
+          diff: true,
+          progress: true,
+          threads: this.clientState.numThreads,
+        },
+        tests
+          ? tests.map(path =>
+              this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG, path)
+            )
+          : []
       )
-      .on(Events.TICK, data => {
-        const {minutes, test: {isFix, isRegression, isNew}} = data;
-        if (isFix || isRegression || isNew) {
-          this._onTyrantEvent(Events.TICK, data);
-        }
-        this.setClientState({
-          completed: this.clientState.completed + 1,
-          minutes,
-        });
-      })
-      .on(Events.FINISHED_EXECUTION, () =>
-        this.setClientState({running: false})
-      )
-      .on(Events.RERUNNING_TESTS, ({files, retriesLeft}) => {
-        this._onTyrantEvent(Events.RERUNNING_TESTS, {
-          files: Array.from(files),
-          retriesLeft,
-        });
-      })
-      .execute();
+        .setEventCallback((...args) => {
+          if (this.clientState.forwardAllTyrantEvents) {
+            this._onTyrantEvent(...args);
+          }
+        })
+        .on(Events.STARTED_EXECUTION, () =>
+          this.setClientState({ running: true })
+        )
+        .on(Events.STARTED_RUNNING, ({ numTests }) =>
+          this.setClientState({ completed: 0, numTests })
+        )
+        .on(Events.TICK, data => {
+          const { minutes, test: { isFix, isRegression, isNew } } = data;
+          if (isFix || isRegression || isNew) {
+            this._onTyrantEvent(Events.TICK, data);
+          }
+          this.setClientState({
+            completed: this.clientState.completed + 1,
+            minutes,
+          });
+        })
+        .on(Events.FINISHED_EXECUTION, () =>
+          this.setClientState({ running: false })
+        )
+        .on(Events.RERUNNING_TESTS, ({ files, retriesLeft }) => {
+          this._onTyrantEvent(Events.RERUNNING_TESTS, {
+            files: Array.from(files),
+            retriesLeft,
+          });
+        })
+        .execute();
+
+      await executionPromise;
+    });
   };
 }
