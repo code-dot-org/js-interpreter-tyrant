@@ -1,13 +1,16 @@
 import RPCInterface from './RPCInterface';
 import SlaveRunner from '../slave/SlaveRunner';
 
-@RPCInterface({type: 'master'})
+@RPCInterface({ type: 'master' })
 export default class MasterRunner {
   static SlaveClass = SlaveRunner;
+  latestResults = [];
 
+  // TODO: this doesn't actually work
   getSavedResults = () =>
     this.slaveManager.emitToPrimarySlave('SlaveRunner.getSavedResults');
 
+  // TODO: this doesn't actually work.
   getNewResults = async () =>
     this.slaveManager.emitToAllSlaves('SlaveRunner.getNewResults');
 
@@ -21,14 +24,22 @@ export default class MasterRunner {
     );
   };
 
-  execute = async ({tests, rerun}) => {
+  execute = async ({ tests, rerun }) => {
+    this.latestResults = [];
     this.slaveManager.slaves.forEach((slave, splitIndex, slaves) => {
-      this.slaveManager.getSocketFor(slave).emit('SlaveRunner.execute', {
-        splitIndex,
-        splitInto: slaves.length,
-        tests,
-        rerun,
-      });
+      this.slaveManager.getSocketFor(slave).emit(
+        'SlaveRunner.execute',
+        {
+          splitIndex,
+          splitInto: slaves.length,
+          tests,
+          rerun,
+        },
+        newResults => {
+          console.log('GOT SOME LATEST RESULTS!');
+          this.latestResults = [...this.latestResults, ...newResults];
+        }
+      );
     });
   };
 }

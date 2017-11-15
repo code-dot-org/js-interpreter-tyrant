@@ -1,5 +1,5 @@
 import moment from 'moment-mini';
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import {
   LinearProgress,
@@ -14,12 +14,12 @@ import {
   Typography,
   Paper,
 } from 'material-ui';
-import {withTheme} from 'material-ui/styles';
-import {grey} from 'material-ui/colors';
+import { withTheme } from 'material-ui/styles';
+import { grey } from 'material-ui/colors';
 
 import MainCard from './MainCard';
 import Connection from '../client/Connection';
-import TyrantEventQueue, {Events} from '../client/TyrantEventQueue';
+import TyrantEventQueue, { Events } from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
 import TestResultsTable from './TestResultsTable';
 
@@ -45,7 +45,7 @@ class GlobInput extends Component {
               label="Test File Glob"
               helperText="Use this to limit the number of files being tested. (i.e. language/types/string/**.js)"
               value={this.state.value}
-              onChange={e => this.setState({value: e.target.value})}
+              onChange={e => this.setState({ value: e.target.value })}
               margin="normal"
               fullWidth
             />
@@ -62,7 +62,8 @@ class GlobInput extends Component {
                   .split(' ')
                   .filter(s => !!s)
                   .map(fn => `tyrant/test262/test/${fn}`)
-              )}
+              )
+            }
           >
             {this.state.value ? 'Run Tests' : 'Run All 40,0000+ Tests'}
           </Button>
@@ -93,9 +94,9 @@ export default class RunCard extends Component {
 
   run = tests => {
     Object.keys(this.state.slaves).forEach(slaveId =>
-      this.setSlaveState(slaveId, {results: []})
+      this.setSlaveState(slaveId, { results: [] })
     );
-    Connection.MasterRunner.execute({tests});
+    Connection.MasterRunner.execute({ tests });
   };
 
   getSlaveState(slaveId) {
@@ -117,21 +118,20 @@ export default class RunCard extends Component {
   onTyrantEvents = events => {
     const newResults = {};
     events.forEach(event => {
-      const {slaveId, eventName, data} = event;
+      const { slaveId, eventName, data } = event;
       if (eventName === Events.TICK) {
-        const {test} = data;
+        const { test } = data;
         newResults[slaveId] = newResults[slaveId] || [];
         newResults[slaveId].push(test);
       } else if (eventName === Events.RERUNNING_TESTS) {
-        const {files, retriesLeft} = data;
+        const { files, retriesLeft } = data;
         const slaveState = this.getSlaveState(slaveId);
         const filesToRemove = new Set(
           files.map(file => file.split('test262')[1])
         );
-        const results = (slaveState.results || [])
-          .filter(
-            oldTest => !filesToRemove.has(oldTest.file.split('test262')[1])
-          );
+        const results = (slaveState.results || []).filter(
+          oldTest => !filesToRemove.has(oldTest.file.split('test262')[1])
+        );
         this.setSlaveState(slaveId, {
           retriesLeft,
           results,
@@ -155,21 +155,21 @@ export default class RunCard extends Component {
       this.setSlaveState(newState.slaveId, newState)
     );
     const state = await Connection.SlaveManager.getClientState();
-    this.setState({canRun: state.slaves.length > 0});
+    this.setState({ canRun: state.slaves.length > 0 });
     Connection.SlaveManager.onClientStateChange(state =>
-      this.setState({canRun: state.slaves.length > 0})
+      this.setState({ canRun: state.slaves.length > 0 })
     );
   }
 
   onClickLoadSavedResults = async () => {
     const savedResults = await Connection.MasterRunner.getSavedResults();
-    this.setState({savedResults});
+    this.setState({ savedResults });
   };
 
   onClickLoadNewResults = async () => {
     const newResults = await Connection.MasterRunner.getNewResults();
-    newResults.forEach(({result: results, slaveId}) =>
-      this.setSlaveState(slaveId, {results})
+    newResults.forEach(({ result: results, slaveId }) =>
+      this.setSlaveState(slaveId, { results })
     );
   };
 
@@ -178,14 +178,15 @@ export default class RunCard extends Component {
   };
 
   onClickRerunTests = async tests => {
-    Connection.MasterRunner.execute({tests, rerun: true});
+    Connection.MasterRunner.execute({ tests, rerun: true });
   };
   onClickRun = tests => this.run(tests);
   onClickKill = async () => {
     await Connection.MasterRunner.kill();
   };
 
-  handleChange = name => ({target: {value}}) => this.setState({[name]: value});
+  handleChange = name => ({ target: { value } }) =>
+    this.setState({ [name]: value });
 
   getAggregateSlaveState() {
     const state = {
@@ -209,7 +210,7 @@ export default class RunCard extends Component {
     return state;
   }
 
-  changeTab = (event, tab) => this.setState({tab});
+  changeTab = (event, tab) => this.setState({ tab });
 
   render() {
     const state = this.getAggregateSlaveState();
@@ -224,7 +225,7 @@ export default class RunCard extends Component {
       (num, test) => num + (test.isRegression ? 1 : 0),
       0
     );
-    const timeRemaining = moment.duration({minutes: state.minutes});
+    const timeRemaining = moment.duration({ minutes: state.minutes });
     return (
       <MainCard>
         <CardHeader title="Test Results" />
@@ -242,53 +243,57 @@ export default class RunCard extends Component {
               <Tab value="new-results" label="New Results" />
               <Tab value="saved-results" label="Saved Results" />
             </Tabs>
-            {this.state.tab === 'saved-results' &&
+            {this.state.tab === 'saved-results' && (
               <div>
-                {this.state.savedResults
-                  ? <TestResultsTable
-                      results={this.state.savedResults}
-                      onClickRun={this.onClickRerunTests}
-                    />
-                  : <CardContent style={{textAlign: 'center'}}>
-                      <Button
-                        raised
-                        color="primary"
-                        onClick={this.onClickLoadSavedResults}
-                      >
-                        Load Saved Results
-                      </Button>
-                      <Typography type="caption" style={{marginTop: 8}}>
-                        This operation can take a second
-                      </Typography>
-                    </CardContent>}
-              </div>}
-            {this.state.tab === 'new-results' &&
+                {this.state.savedResults ? (
+                  <TestResultsTable
+                    results={this.state.savedResults}
+                    onClickRun={this.onClickRerunTests}
+                  />
+                ) : (
+                  <CardContent style={{ textAlign: 'center' }}>
+                    <Button
+                      raised
+                      color="primary"
+                      onClick={this.onClickLoadSavedResults}
+                    >
+                      Load Saved Results
+                    </Button>
+                    <Typography type="caption" style={{ marginTop: 8 }}>
+                      This operation can take a second
+                    </Typography>
+                  </CardContent>
+                )}
+              </div>
+            )}
+            {this.state.tab === 'new-results' && (
               <div>
                 <CardContent>
                   {state.results.length === 0 &&
-                    !state.running > 0 &&
-                    <div style={{textAlign: 'center'}}>
-                      <Typography type="body1">
-                        Run tests to see new results or...
-                      </Typography>
-                      <Button
-                        raised
-                        color="primary"
-                        onClick={this.onClickLoadNewResults}
-                      >
-                        Load New Results
-                      </Button>
-                    </div>}
-                  {state.running > 0 &&
-                    <div style={{display: 'flex', alignItems: 'center'}}>
-                      <div style={{flexBasis: '100%'}}>
+                    !state.running > 0 && (
+                      <div style={{ textAlign: 'center' }}>
+                        <Typography type="body1">
+                          Run tests to see new results or...
+                        </Typography>
+                        <Button
+                          raised
+                          color="primary"
+                          onClick={this.onClickLoadNewResults}
+                        >
+                          Load New Results
+                        </Button>
+                      </div>
+                    )}
+                  {state.running > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ flexBasis: '100%' }}>
                         <LinearProgress
                           color="accent"
                           mode="determinate"
                           value={progress}
                         />
                       </div>
-                      <div style={{marginLeft: 8, whiteSpace: 'nowrap'}}>
+                      <div style={{ marginLeft: 8, whiteSpace: 'nowrap' }}>
                         <span
                           style={{
                             color: this.props.theme.palette.secondary[700],
@@ -310,13 +315,15 @@ export default class RunCard extends Component {
                           {state.running} slave running
                         </Typography>
                       </div>
-                    </div>}
+                    </div>
+                  )}
                 </CardContent>
-                {state.results.length > 0 &&
+                {state.results.length > 0 && (
                   <TestResultsTable
                     results={state.results}
                     onClickRun={this.onClickRerunTests}
-                  />}
+                  />
+                )}
                 <CardActions>
                   <Button
                     color="primary"
@@ -336,14 +343,21 @@ export default class RunCard extends Component {
                     color="primary"
                     raised
                     onClick={this.onClickSaveResults}
-                    style={{marginLeft: 8}}
+                    style={{ marginLeft: 8 }}
                   >
                     {hasChangedResults
                       ? 'Save Results'
                       : 'No New Results To Save'}
                   </Button>
+                  <Button
+                    href="/test-results-new.json"
+                    style={{ marginLeft: 8 }}
+                  >
+                    Download Results
+                  </Button>
                 </CardActions>
-              </div>}
+              </div>
+            )}
           </Card>
         </CardContent>
       </MainCard>

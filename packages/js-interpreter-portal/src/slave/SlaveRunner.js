@@ -93,9 +93,10 @@ export default class SlaveRunner {
   }
 
   execute = async ({ splitIndex, splitInto, tests, rerun }) => {
-    rootLock.waitForLock(async () => {
+    let newResults;
+    await rootLock.waitForLock(async () => {
       console.log('executing tests', tests);
-      const executionPromise = this.getTyrant(
+      const tyrant = this.getTyrant(
         {
           splitIndex,
           splitInto,
@@ -142,10 +143,10 @@ export default class SlaveRunner {
             files: Array.from(files),
             retriesLeft,
           });
-        })
-        .execute();
-
-      await executionPromise;
+        });
+      await tyrant.execute();
+      newResults = tyrant.getNewResults();
     });
+    return newResults;
   };
 }
