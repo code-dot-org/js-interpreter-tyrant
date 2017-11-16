@@ -249,12 +249,14 @@ export default class VersionSwitcher extends Component {
           </CardContent>
           <Card>
             <List>
-              {this.state.masterState.operationLog.map(({ opType, args }) => (
-                <ListItem divider dense>
-                  {opType}(
-                  {args.map(arg => <span>{JSON.stringify(arg)} </span>)})
-                </ListItem>
-              ))}
+              {this.state.masterState.operationLog.map(
+                ({ opType, args }, index) => (
+                  <ListItem divider dense key={index}>
+                    {opType}(
+                    {args.map(arg => <span>{JSON.stringify(arg)} </span>)})
+                  </ListItem>
+                )
+              )}
             </List>
           </Card>
         </CardContent>

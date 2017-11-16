@@ -159,6 +159,11 @@ export default class RunCard extends Component {
     Connection.SlaveManager.onClientStateChange(state =>
       this.setState({ canRun: state.slaves.length > 0 })
     );
+
+    const slaveStates = await Connection.MasterRunner.getSlaveStates();
+    slaveStates.forEach(({ result: state, slaveId }) => {
+      this.setSlaveState(slaveId, state);
+    });
   }
 
   onClickLoadSavedResults = async () => {

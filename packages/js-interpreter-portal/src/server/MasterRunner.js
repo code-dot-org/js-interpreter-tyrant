@@ -16,6 +16,9 @@ export default class MasterRunner {
     await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults');
   };
 
+  getSlaveStates = () =>
+    this.slaveManager.emitToAllSlaves('SlaveRunner.getClientState');
+
   kill = async () => {
     await Promise.all(
       this.slaveManager.slaves.map(this.slaveManager.restartSlave)
