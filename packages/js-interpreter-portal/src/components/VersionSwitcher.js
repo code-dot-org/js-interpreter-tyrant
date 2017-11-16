@@ -204,11 +204,15 @@ export default class VersionSwitcher extends Component {
 
   async componentDidMount() {
     Connection.SlaveVersionManager.onClientStateChange(this.setSlaveState);
+    const slaves = await Connection.MasterVersionManager.getSlaveStates();
+    this.setState({
+      slaves,
+    });
+
     Connection.MasterVersionManager.onClientStateChange(this.setMasterState);
     this.setMasterState(
       await Connection.MasterVersionManager.getClientState(this.setMasterState)
     );
-    await Connection.MasterVersionManager.update();
   }
 
   selectVersion = sha => {
@@ -241,7 +245,7 @@ export default class VersionSwitcher extends Component {
         <CardHeader title="Interpreter Versions" />
         <CardContent>
           <CardContent>
-            <Typography type="subtitle">Operations</Typography>
+            <Typography type="subheading">Operations</Typography>
           </CardContent>
           <Card>
             <List>

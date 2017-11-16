@@ -15,6 +15,17 @@ export default class MasterVersionManager {
     });
   }
 
+  getSlaveStates = async () => {
+    const states = await this.slaveManager.emitToAllSlaves(
+      'SlaveVersionManager.getClientState'
+    );
+    let slaveStates = {};
+    states.forEach(({ slaveId, result }) => {
+      slaveStates[slaveId] = result;
+    });
+    return slaveStates;
+  };
+
   update = async () => {
     this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
     this.logOperation('update');
