@@ -85,6 +85,7 @@ export default class SlaveRunner {
           Repos.CODE_DOT_ORG,
           'bin/run.js'
         ),
+        diff: true,
         ...args,
       },
       positional
@@ -104,7 +105,6 @@ export default class SlaveRunner {
           retries: 3,
           run: true,
           noExit: true,
-          diff: true,
           progress: true,
           threads: this.clientState.numThreads,
         },
