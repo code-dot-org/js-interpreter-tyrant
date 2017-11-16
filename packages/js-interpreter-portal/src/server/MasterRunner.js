@@ -6,12 +6,10 @@ export default class MasterRunner {
   static SlaveClass = SlaveRunner;
   latestResults = [];
 
-  // TODO: this doesn't actually work
   getSavedResults = () =>
     this.slaveManager.emitToPrimarySlave('SlaveRunner.getSavedResults');
 
-  // TODO: this doesn't actually work.
-  getNewResults = async () =>
+  getNewResults = () =>
     this.slaveManager.emitToAllSlaves('SlaveRunner.getNewResults');
 
   saveResults = async () => {

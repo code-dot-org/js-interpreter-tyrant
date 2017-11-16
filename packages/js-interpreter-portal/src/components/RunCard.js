@@ -168,9 +168,9 @@ export default class RunCard extends Component {
 
   onClickLoadNewResults = async () => {
     const newResults = await Connection.MasterRunner.getNewResults();
-    newResults.forEach(({ result: results, slaveId }) =>
-      this.setSlaveState(slaveId, { results })
-    );
+    newResults.forEach(({ result: results, slaveId }) => {
+      this.setSlaveState(slaveId, { results });
+    });
   };
 
   onClickSaveResults = async () => {
@@ -312,7 +312,8 @@ export default class RunCard extends Component {
                           {timeRemaining.humanize()} left
                         </Typography>
                         <Typography color="accent" type="caption">
-                          {state.running} slave running
+                          {state.running} slave{state.running !== 1 && 's'}{' '}
+                          running
                         </Typography>
                       </div>
                     </div>
