@@ -1,4 +1,4 @@
-import React, {PureComponent} from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import {
   List,
@@ -8,12 +8,12 @@ import {
   IconButton,
   Avatar,
 } from 'material-ui';
-import {Folder, Refresh} from 'material-ui-icons';
+import { Folder, Refresh } from 'material-ui-icons';
 import Collapse from 'material-ui/transitions/Collapse';
-import {withTheme} from 'material-ui/styles';
+import { withTheme } from 'material-ui/styles';
 import styled from 'styled-components';
 
-import {shortTestName} from '../util';
+import { shortTestName } from '../util';
 
 const SecondaryText = styled.span`
   span:after {
@@ -63,7 +63,7 @@ export default class TestResultsTable extends PureComponent {
 
   onClickRow = key => () => {
     this.setState({
-      expanded: {...this.state.expanded, [key]: !this.state.expanded[key]},
+      expanded: { ...this.state.expanded, [key]: !this.state.expanded[key] },
     });
   };
 
@@ -71,7 +71,10 @@ export default class TestResultsTable extends PureComponent {
     const rowData = groupBy(
       results,
       test =>
-        shortTestName(test.file).split('/').slice(level, level + 1).join('/'),
+        shortTestName(test.file)
+          .split('/')
+          .slice(level, level + 1)
+          .join('/'),
       (key, tests) => {
         const byResult = groupBy(tests, test => test.result.pass);
         const byDiff = groupBy(
@@ -111,28 +114,18 @@ export default class TestResultsTable extends PureComponent {
         <span>
           {passed}/{total} ({Math.round(passed / total * 100)}%) passed
         </span>
-        {fixed > 0 &&
-          <span>
-            {fixed} fixes
-          </span>}
-        {regressed > 0 &&
-          <span>
-            {regressed} regressions
-          </span>}
-        {newTest > 0 &&
-          <span>
-            {newTest} new tests
-          </span>}
+        {fixed > 0 && <span>{fixed} fixes</span>}
+        {regressed > 0 && <span>{regressed} regressions</span>}
+        {newTest > 0 && <span>{newTest} new tests</span>}
         {!fixed &&
           !regressed &&
-          !newTest &&
-          <span>no changes from last run</span>}
+          !newTest && <span>no changes from last run</span>}
       </SecondaryText>
     );
   }
 
   onClickRun = tests => () => {
-    this.props.onClickRun(tests.map(test => test.file));
+    this.props.onClickRun(tests.map(test => shortTestName(test.file)));
   };
 
   renderLevel(results, level = 0) {
@@ -140,7 +133,7 @@ export default class TestResultsTable extends PureComponent {
     let nextIsTruncated = false;
     if (rowData.length > MAX_RESULTS_TO_SHOW) {
       rowData = rowData.filter(
-        ({fixed, regressed, newTest}) =>
+        ({ fixed, regressed, newTest }) =>
           fixed > 0 || regressed > 0 || newTest > 0
       );
       nextIsTruncated = true;
@@ -163,12 +156,29 @@ export default class TestResultsTable extends PureComponent {
 
     return rowsForLevel.concat(
       rowData.map(data => {
-        const {results, key} = data;
+        const { results, key } = data;
         const expandable = !key.endsWith('.js');
         const isExpanded = this.state.expanded[key];
-        let primary = key;
+        let primary;
         if (expandable) {
-          primary += '/';
+          primary = (
+            <strong>
+              {key}
+              {'/'}
+            </strong>
+          );
+        } else {
+          primary = (
+            <div>
+              <strong>{key}</strong>
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {results[0].attrs.description}
+              </div>
+              {results[0].result.message && (
+                <div style={{ color: 'red' }}>{results[0].result.message}</div>
+              )}
+            </div>
+          );
         }
         const row = (
           <ListItem
@@ -183,10 +193,11 @@ export default class TestResultsTable extends PureComponent {
                 level * this.props.theme.spacing.unit * 4,
             }}
           >
-            {expandable &&
+            {expandable && (
               <Avatar>
                 <Folder />
-              </Avatar>}
+              </Avatar>
+            )}
             <ListItemText
               primary={primary}
               secondary={this.renderRowText(data)}
@@ -199,18 +210,17 @@ export default class TestResultsTable extends PureComponent {
           </ListItem>
         );
         if (isExpanded) {
-          const childRows = this.renderLevel(
-            results,
-            level + 1
-          ).map((item, index) =>
-            <Collapse
-              key={index}
-              in={this.state.expanded[key]}
-              transitionDuration="auto"
-              unmountOnExit
-            >
-              {item}
-            </Collapse>
+          const childRows = this.renderLevel(results, level + 1).map(
+            (item, index) => (
+              <Collapse
+                key={index}
+                in={this.state.expanded[key]}
+                transitionDuration="auto"
+                unmountOnExit
+              >
+                {item}
+              </Collapse>
+            )
           );
           return [row, ...childRows];
         }
@@ -220,7 +230,7 @@ export default class TestResultsTable extends PureComponent {
   }
 
   render() {
-    let {results} = this.props;
+    let { results } = this.props;
     if (this.props.filter) {
       results = results.filter(this.props.filter);
     }
