@@ -5,7 +5,7 @@ export const ClassNames = [];
 
 const EMIT_CLIENT_STATE_THROTTLE = 100;
 
-export default function RPCInterface({clientStateChangeEvent, type} = {}) {
+export default function RPCInterface({ clientStateChangeEvent, type } = {}) {
   return cls => {
     if (!ClassNames.includes(cls.name)) {
       ClassNames.push(cls.name);
@@ -22,7 +22,7 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
         super(io, slaveManager, ...args);
         this.io = io;
         this.slaveManager = slaveManager;
-        this.clientState = this.clientState || {};
+        this.setClientState(this.clientState);
       }
 
       _emitClientState = throttle(
@@ -32,7 +32,7 @@ export default function RPCInterface({clientStateChangeEvent, type} = {}) {
       );
 
       setClientState(stateUpdates) {
-        this.clientState = {...this.clientState, ...stateUpdates};
+        this.clientState = { ...this.clientState, ...stateUpdates };
         this.io.to('clients').emit(clientStateChangeEvent, this.clientState);
       }
       getClientState = async () => this.clientState;

@@ -1,13 +1,15 @@
 import child_process from 'child_process';
+import sortBy from 'lodash.sortby';
 import RPCInterface from './RPCInterface';
 import Heroku from 'heroku-client';
 
-@RPCInterface({type: 'master'})
+@RPCInterface({ type: 'master' })
 export default class SlaveManager {
   clientState = {
     slaves: [],
     numThreads: 8,
     formation: [],
+    numRequestedSlaves: 0,
   };
 
   childProcesses = {};
@@ -16,9 +18,9 @@ export default class SlaveManager {
     this.io = io;
     if (process.env.HEROKU_API_TOKEN) {
       console.log('heroku api token present. Will use heroku for slaves');
-      this.heroku = new Heroku({token: process.env.HEROKU_API_TOKEN});
+      this.heroku = new Heroku({ token: process.env.HEROKU_API_TOKEN });
     }
-    this.updateFormation();
+    setInterval(this.updateFormation, 10000);
   }
 
   provisionSlave(id) {
@@ -36,6 +38,31 @@ export default class SlaveManager {
     );
   }
 
+  destroySlave(id) {
+    this.emitToSlave(this.getSlave(id), 'Slave.kill');
+  }
+
+  setSlave(id, state) {
+    let found = false;
+    let slaves = this.clientState.slaves.map(s => {
+      if (s.id === id) {
+        found = true;
+        return { ...s, ...state };
+      }
+      return s;
+    });
+    if (!found) {
+      slaves.push({ id, ...state });
+      slaves = sortBy(
+        slaves,
+        ({ id }) => (id.includes('.') ? id.split('.')[1] : id)
+      );
+    }
+    this.setClientState({
+      slaves,
+    });
+  }
+
   getSlave(id) {
     return this.clientState.slaves.find(b => b.id === id);
   }
@@ -51,13 +78,11 @@ export default class SlaveManager {
         `/apps/${process.env.HEROKU_APP_NAME}/formation`
       );
     }
-    this.setClientState({formation});
+    this.setClientState({ formation });
   };
 
   restartSlave = async slave => {
-    this.setClientState({
-      slaves: this.clientState.slaves.filter(s => s.id !== slave.id),
-    });
+    this.setSlave(slave.id, { restarting: true });
     if (this.heroku) {
       await this.heroku.delete(
         `/apps/${process.env.HEROKU_APP_NAME}/dynos/${slave.id}`
@@ -93,52 +118,58 @@ export default class SlaveManager {
     return await Promise.all(
       this.slaves.map(async slave => {
         const result = await this.emitToSlave(slave, event, ...args);
-        return {result, slaveId: slave.id};
+        return { result, slaveId: slave.id };
       })
     );
   }
 
-  registerSlave = async ({id}, socketId) => {
-    const slave = this.getSlave(id);
-    if (slave) {
-      slave.socketId = socketId;
-      this.setClientState({
-        slaves: this.clientState.slaves.map(
-          s => (s.id === id ? {...s, socketId} : s)
-        ),
-      });
-    } else {
-      this.setClientState({
-        slaves: [...this.clientState.slaves, {id, socketId}],
-      });
-    }
+  registerSlave = async ({ id, startedAt }, socketId) => {
+    this.setSlave(id, { socketId, startedAt, restarting: false });
   };
 
-  setConfig = async ({numSlaves, numThreads}) => {
-    if (numSlaves) {
+  deregisterSlave = async ({ id }) => {
+    this.setClientState({
+      slaves: this.clientState.slaves.filter(s => s.id !== id),
+    });
+  };
+
+  setConfig = async ({ numSlaves, numThreads }) => {
+    if (numSlaves !== undefined) {
       await this.setNumSlaves(numSlaves);
     }
     if (numThreads) {
-      this.clientState.slaves.forEach(({socketId}) => {
-        this.io.to(socketId).emit('SlaveRunner.setNumThreads', {numThreads});
+      this.clientState.slaves.forEach(({ socketId }) => {
+        this.io.to(socketId).emit('SlaveRunner.setNumThreads', { numThreads });
       });
-      this.setClientState({numThreads});
+      this.setClientState({ numThreads });
     }
   };
 
   setNumSlaves = async numSlaves => {
+    this.setClientState({ numRequestedSlaves: numSlaves });
     if (this.heroku) {
       console.log(
         'sending patch request to',
         `/apps/${process.env.HEROKU_APP_NAME}/formation/worker`
       );
+      if (numSlaves < this.clientState.slaves.length) {
+        for (let i = this.clientState.slaves.length; i > numSlaves; i--) {
+          this.destroySlave(this.clientState.slaves[i - 1].id);
+        }
+      }
       return await this.heroku.patch(
         `/apps/${process.env.HEROKU_APP_NAME}/formation/worker`,
-        {body: {quantity: numSlaves}}
+        { body: { quantity: numSlaves } }
       );
     }
-    for (let i = this.clientState.slaves.length; i < numSlaves; i++) {
-      this.provisionSlave(`slave-${i}`);
+    if (numSlaves > this.clientState.slaves.length) {
+      for (let i = this.clientState.slaves.length; i < numSlaves; i++) {
+        this.provisionSlave(`worker.${i}`);
+      }
+    } else {
+      for (let i = this.clientState.slaves.length; i > numSlaves; i--) {
+        this.destroySlave(this.clientState.slaves[i - 1].id);
+      }
     }
   };
 }

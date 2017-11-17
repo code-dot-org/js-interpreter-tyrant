@@ -1,8 +1,8 @@
 import MasterVersionManager from './MasterVersionManager';
-import {EventNames, ClassNames} from './RPCInterface';
+import { EventNames, ClassNames } from './RPCInterface';
 import SlaveManager from './SlaveManager';
 import MasterRunner from './MasterRunner';
-import {ClientEvents} from '../constants';
+import { ClientEvents } from '../constants';
 
 export default class SocketAPI {
   handlers = {
@@ -22,9 +22,10 @@ export default class SocketAPI {
     this.masterRunner = new MasterRunner(this.io, this.slaveManager);
 
     this.io.on('connection', this.onConnection);
+
     if (!this.slaveManager.heroku) {
       // running locally. Go ahead and start up a slave
-      this.slaveManager.setConfig({numSlaves: 1});
+      this.slaveManager.setConfig({ numSlaves: 0 });
     }
   }
 

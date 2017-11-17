@@ -13,7 +13,21 @@ export default class Slave {
     this.runner.listenTo(socket);
     this.versionManager.listenTo(socket);
     console.log('registering slave', this.id, 'with master');
-    Connection.SlaveManager.registerSlave({ id: this.id });
+    Connection.SlaveManager.registerSlave({
+      id: this.id,
+      startedAt: new Date().getTime(),
+    });
     this.versionManager.matchMasterState();
+
+    socket.on('Slave.kill', this.deregisterAndKill);
+    process.on('SIGINT', this.deregisterAndKill);
+    process.on('SIGTERM', this.deregisterAndKill);
+    process.on('SIGHUP', this.deregisterAndKill);
   }
+
+  deregisterAndKill = async () => {
+    console.log('deregistering', this.id);
+    await Connection.SlaveManager.deregisterSlave({ id: this.id });
+    process.exit(1);
+  };
 }

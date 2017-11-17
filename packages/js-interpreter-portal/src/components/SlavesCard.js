@@ -6,6 +6,7 @@ import {
   Input,
   List,
   ListItem,
+  ListItemText,
   Card,
   CardHeader,
   CardContent,
@@ -17,6 +18,7 @@ import {
   TableRow,
   Table,
   withStyles,
+  CircularProgress,
 } from 'material-ui';
 import Connection from '../client/Connection';
 import MainCard from './MainCard';
@@ -35,6 +37,7 @@ const NumberDropdown = withStyles({
   onChange,
   label,
   classes,
+  loading,
 }) {
   const items = [];
   for (let i = start; i < start + count; i++) {
@@ -47,7 +50,17 @@ const NumberDropdown = withStyles({
   return (
     <FormControl className={classes.formControl}>
       <InputLabel htmlFor={id}>{label}</InputLabel>
-      <Select value={value} onChange={onChange} input={<Input id={id} />}>
+      <Select
+        value={value}
+        onChange={onChange}
+        input={<Input id={id} />}
+        style={{ minWidth: 70 }}
+        renderValue={value => (
+          <span>
+            {value} {loading && <CircularProgress size={24} />}
+          </span>
+        )}
+      >
         {items}
       </Select>
     </FormControl>
@@ -61,6 +74,7 @@ export default class SlavesCard extends Component {
     slaves: [],
     numThreads: 1,
     formation: null,
+    numRequestedSlaves: 0,
   };
 
   async componentDidMount() {
@@ -70,7 +84,6 @@ export default class SlavesCard extends Component {
   }
 
   onChangeNumSlaves = async ({ target: { value } }) => {
-    this.setState({ requestedNumSlaves: value });
     await Connection.SlaveManager.setConfig({ numSlaves: value });
   };
 
@@ -112,8 +125,11 @@ export default class SlavesCard extends Component {
                 start={0}
                 count={40}
                 id="num-slaves"
-                value={this.state.slaves.length}
+                value={this.state.numRequestedSlaves}
                 onChange={this.onChangeNumSlaves}
+                loading={
+                  this.state.numRequestedSlaves !== this.state.slaves.length
+                }
               />
               <NumberDropdown
                 label="Num Threads"
@@ -131,7 +147,21 @@ export default class SlavesCard extends Component {
             <List>
               {this.state.slaves.map(slave => (
                 <ListItem key={slave.id} divider>
-                  {slave.id}
+                  <ListItemText
+                    primary={slave.id}
+                    secondary={
+                      <span>
+                        started at{' '}
+                        {moment(new Date(slave.startedAt)).format('LT')}{' '}
+                        {slave.restarting && (
+                          <span>
+                            &middot; restarting...{' '}
+                            <CircularProgress size={20} />
+                          </span>
+                        )}
+                      </span>
+                    }
+                  />
                 </ListItem>
               ))}
             </List>
