@@ -1,7 +1,7 @@
 import child_process from 'child_process';
 import RPCInterface from './RPCInterface';
 import Heroku from 'heroku-client';
-import { sortById } from '../util';
+import sortBy from 'lodash.sortby';
 
 @RPCInterface({ type: 'master' })
 export default class SlaveManager {
@@ -53,7 +53,7 @@ export default class SlaveManager {
     });
     if (!found) {
       slaves.push({ id, ...state });
-      slaves = sortById(slaves);
+      slaves = sortBy(slaves, s => parseInt(s.id.split('.')[1]));
     }
     this.setClientState({
       slaves,

@@ -1,3 +1,4 @@
+import sortBy from 'lodash.sortby';
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment-mini';
@@ -21,7 +22,6 @@ import styled from 'styled-components';
 
 import { ClientEvents } from '../constants';
 import Connection from '../client/Connection';
-import { sortById } from '../util';
 
 import MainCard from './MainCard';
 
@@ -263,7 +263,9 @@ export default class VersionSwitcher extends Component {
         </CardContent>
         <CardContent>
           <Card>
-            {sortById(Object.values(this.state.slaves))
+            {sortBy(Object.values(this.state.slaves), s =>
+              parseInt(s.slaveId.split('.')[1])
+            )
               .filter(slaveState => slaveState.updating || slaveState.lastLog)
               .map(slaveState => (
                 <CardContent key={slaveState.slaveId}>
