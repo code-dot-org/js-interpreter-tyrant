@@ -15,8 +15,17 @@ export function objectToArgs(obj = {}, positional = []) {
   return [...args, ...positional];
 }
 
+/**
+ * Returns just the part of the test file path that changes
+ * from test to test. This is the minimal path to identify
+ * any test file uniquely.
+ */
 export function shortTestName(path) {
   return path.split('test262/test/')[1];
+}
+
+export function fullTestName(path) {
+  return 'tyrant/test262/test/' + path;
 }
 
 export class Lock {

@@ -37,7 +37,6 @@ export default class MasterRunner {
           rerun,
         },
         newResults => {
-          console.log('GOT SOME LATEST RESULTS!');
           this.latestResults = [...this.latestResults, ...newResults];
         }
       );

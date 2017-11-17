@@ -13,7 +13,7 @@ import Collapse from 'material-ui/transitions/Collapse';
 import { withTheme } from 'material-ui/styles';
 import styled from 'styled-components';
 
-import { shortTestName } from '../util';
+import { fullTestName, shortTestName } from '../util';
 
 const SecondaryText = styled.span`
   span:after {
@@ -125,7 +125,11 @@ export default class TestResultsTable extends PureComponent {
   }
 
   onClickRun = tests => () => {
-    this.props.onClickRun(tests.map(test => shortTestName(test.file)));
+    this.props.onClickRun(
+      Array.from(
+        new Set(tests.map(test => fullTestName(shortTestName(test.file))))
+      )
+    );
   };
 
   renderLevel(results, level = 0) {
@@ -184,8 +188,8 @@ export default class TestResultsTable extends PureComponent {
           <ListItem
             divider
             key={key}
-            button
-            disableRipple
+            button={expandable}
+            disableRipple={expandable}
             onClick={expandable ? this.onClickRow(key) : undefined}
             style={{
               paddingLeft:

@@ -22,6 +22,7 @@ import Connection from '../client/Connection';
 import TyrantEventQueue, { Events } from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
 import TestResultsTable from './TestResultsTable';
+import { fullTestName } from '../util';
 
 class GlobInput extends Component {
   state = {
@@ -61,7 +62,7 @@ class GlobInput extends Component {
                 this.state.value
                   .split(' ')
                   .filter(s => !!s)
-                  .map(fn => `tyrant/test262/test/${fn}`)
+                  .map(fn => fullTestName(fn))
               )
             }
           >
@@ -129,9 +130,12 @@ export default class RunCard extends Component {
         const filesToRemove = new Set(
           files.map(file => file.split('test262')[1])
         );
-        const results = (slaveState.results || []).filter(
-          oldTest => !filesToRemove.has(oldTest.file.split('test262')[1])
-        );
+        const shouldNotBeRemoved = oldTest =>
+          !filesToRemove.has(oldTest.file.split('test262')[1]);
+        const results = (slaveState.results || []).filter(shouldNotBeRemoved);
+        Object.keys(newResults).forEach(slaveId => {
+          newResults[slaveId] = newResults[slaveId].filter(shouldNotBeRemoved);
+        });
         this.setSlaveState(slaveId, {
           retriesLeft,
           results,
