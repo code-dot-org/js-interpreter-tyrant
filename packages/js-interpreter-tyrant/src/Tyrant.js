@@ -4,14 +4,71 @@ import fetch from 'node-fetch';
 import os from 'os';
 import fs from 'fs';
 import yargs from 'yargs';
-import {execSync} from 'child_process';
+import { execSync } from 'child_process';
 import chalk from 'chalk';
 import globber from 'test262-harness/lib/globber.js';
 import ProgressBar from 'progress';
 import runner from './runner';
-import {Events} from './constants';
+import { Events } from './constants';
 
 const TEST_TYPES = ['es5', 'es6', 'es', 'other'];
+
+const DEFAULT_TEST_GLOBS = [
+  'test262/test/annexB/**/*.js',
+  'test262/test/harness/**/*.js',
+  'test262/test/intl402/**/*.js',
+  'test262/test/language/**/*.js',
+  'test262/test/built-ins/Array/**/*.js',
+  'test262/test/built-ins/ArrayBuffer/**/*.js',
+  'test262/test/built-ins/ArrayIteratorPrototype/**/*.js',
+  'test262/test/built-ins/AsyncFunction/**/*.js',
+  'test262/test/built-ins/Atomics/**/*.js',
+  'test262/test/built-ins/Boolean/**/*.js',
+  'test262/test/built-ins/DataView/**/*.js',
+  'test262/test/built-ins/Date/**/*.js',
+  'test262/test/built-ins/decodeURI/**/*.js',
+  'test262/test/built-ins/decodeURIComponent/**/*.js',
+  'test262/test/built-ins/encodeURI/**/*.js',
+  'test262/test/built-ins/encodeURIComponent/**/*.js',
+  'test262/test/built-ins/Error/**/*.js',
+  'test262/test/built-ins/eval/**/*.js',
+  'test262/test/built-ins/Function/**/*.js',
+  'test262/test/built-ins/GeneratorFunction/**/*.js',
+  'test262/test/built-ins/GeneratorPrototype/**/*.js',
+  'test262/test/built-ins/global/**/*.js',
+  'test262/test/built-ins/Infinity/**/*.js',
+  'test262/test/built-ins/isFinite/**/*.js',
+  'test262/test/built-ins/isNaN/**/*.js',
+  'test262/test/built-ins/IteratorPrototype/**/*.js',
+  'test262/test/built-ins/JSON/**/*.js',
+  'test262/test/built-ins/Map/**/*.js',
+  'test262/test/built-ins/MapIteratorPrototype/**/*.js',
+  'test262/test/built-ins/Math/**/*.js',
+  'test262/test/built-ins/NaN/**/*.js',
+  'test262/test/built-ins/NativeErrors/**/*.js',
+  'test262/test/built-ins/Number/**/*.js',
+  'test262/test/built-ins/Object/**/*.js',
+  'test262/test/built-ins/parseFloat/**/*.js',
+  'test262/test/built-ins/parseInt/**/*.js',
+  'test262/test/built-ins/Promise/**/*.js',
+  'test262/test/built-ins/Proxy/**/*.js',
+  'test262/test/built-ins/Reflect/**/*.js',
+  'test262/test/built-ins/RegExp/**/*.js',
+  'test262/test/built-ins/Set/**/*.js',
+  'test262/test/built-ins/SetIteratorPrototype/**/*.js',
+  'test262/test/built-ins/SharedArrayBuffer/**/*.js',
+  'test262/test/built-ins/Simd/**/*.js',
+  'test262/test/built-ins/String/**/*.js',
+  'test262/test/built-ins/StringIteratorPrototype/**/*.js',
+  'test262/test/built-ins/Symbol/**/*.js',
+  'test262/test/built-ins/ThrowTypeError/**/*.js',
+  'test262/test/built-ins/TypedArray/**/*.js',
+  // this test file currently makes the interpreter explode.
+  //  'test262/test/built-ins/TypedArrays/**/*.js',
+  'test262/test/built-ins/undefined/**/*.js',
+  'test262/test/built-ins/WeakMap/**/*.js',
+  'test262/test/built-ins/WeakSet/**/*.js',
+];
 
 const ARGS = yargs
   .usage(`Usage: $0 [options] [test file glob pattern]`)
@@ -125,19 +182,19 @@ export default class Tyrant extends EventEmitter {
 
   log(...args) {
     console.log(...args);
-    this.emit(Events.LOG, {message: args.join(' ')});
+    this.emit(Events.LOG, { message: args.join(' ') });
   }
 
   write(...args) {
     process.stdout.write(...args);
-    this.emit(Events.WRITE, {message: args.join(' ')});
+    this.emit(Events.WRITE, { message: args.join(' ') });
   }
 
   execute = async () => {
     this.emit(Events.STARTED_EXECUTION);
     if (this.argv.run) {
       await this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
-      this.postRun();
+      await this.postRun();
     } else if (this.argv.circleBuild) {
       await this.downloadCircleResults();
       this.processTestResults();
@@ -147,22 +204,21 @@ export default class Tyrant extends EventEmitter {
     } else {
       this.processTestResults();
     }
-    this.emit(Events.FINISHED_EXECUTION);
   };
 
-  rerun = () => {
-    const {testsThatDiffer} = this.getResultsDiff(
+  rerun = async () => {
+    const { testsThatDiffer } = this.getResultsDiff(
       readResultsFromFile(this.RESULTS_FILE)
     );
     if (this.argv._.length === 0) {
-      this.argv._ = testsThatDiffer.regressions.map(({newTest}) =>
+      this.argv._ = testsThatDiffer.regressions.map(({ newTest }) =>
         this.getNormalizedTestFileName(newTest.file)
       );
       this.log('found', this.argv._.length, 'regressions to rerun');
     } else {
       const possibleFiles = new Set(this.argv._.map(fn => path.resolve(fn)));
       this.argv._ = testsThatDiffer.regressions
-        .map(({newTest}) => this.getNormalizedTestFileName(newTest.file))
+        .map(({ newTest }) => this.getNormalizedTestFileName(newTest.file))
         .filter(fn => possibleFiles.has(fn));
     }
     if (this.argv._.length > 0) {
@@ -171,29 +227,29 @@ export default class Tyrant extends EventEmitter {
         files: new Set(this.argv._ || []),
         retriesLeft: this.argv.retries - this.numTries,
       });
-      return this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
+      return await this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
     } else {
       this.log('nothing to rerun, there were no regressions');
     }
-    return Promise.resolve();
   };
 
-  postRun = () => {
+  postRun = async () => {
     if (this.argv.retries) {
       let results = readResultsFromFile(this.RESULTS_FILE);
-      let {testsThatDiffer} = this.getResultsDiff(results);
+      let { testsThatDiffer } = this.getResultsDiff(results);
       const numTriesLeft = this.argv.retries - this.numTries;
       if (testsThatDiffer.regressions.length > 0 && numTriesLeft > 0) {
         this.log(
-          `got ${testsThatDiffer.regressions
-            .length} regressions. Retrying them ${numTriesLeft > 1
-            ? 'up to '
-            : ''}${numTriesLeft} ${numTriesLeft > 1
-            ? 'more times...'
-            : 'more time...'}`
+          `got ${
+            testsThatDiffer.regressions.length
+          } regressions. Retrying them ${numTriesLeft > 1 ? 'up to ' : ''}${
+            numTriesLeft
+          } ${numTriesLeft > 1 ? 'more times...' : 'more time...'}`
         );
         this.numTries++;
-        return this.rerun().then(this.postRun);
+        await this.rerun();
+        await this.postRun();
+        return;
       }
     }
     this.processTestResults();
@@ -227,7 +283,7 @@ export default class Tyrant extends EventEmitter {
         JSON.stringify(this.getResultsDiff(results))
       );
     }
-    this.emit(Events.FINISHED_EXECUTION, {hadRegressions});
+    this.emit(Events.FINISHED_EXECUTION, { hadRegressions });
     if (hadRegressions && !this.argv.noExit) {
       process.exit(1);
     }
@@ -242,7 +298,7 @@ export default class Tyrant extends EventEmitter {
       numRegressions,
     } = this.getResultsDiff(results);
     if (this.argv.verbose) {
-      const printTest = (color, {oldTest, newTest}, index) => {
+      const printTest = (color, { oldTest, newTest }, index) => {
         this.log(
           color(chalk.bold(`  ${index}. ${this.getTestDescription(newTest)}`))
         );
@@ -353,7 +409,7 @@ export default class Tyrant extends EventEmitter {
   };
 
   getResultsDiff = results => {
-    const testsThatDiffer = {regressions: [], fixes: [], other: [], new: []};
+    const testsThatDiffer = { regressions: [], fixes: [], other: [], new: [] };
     let numRegressions = {};
     let numFixes = {};
     let numNew = {};
@@ -380,9 +436,9 @@ export default class Tyrant extends EventEmitter {
         numNew[this.getTestType(newTest)]++;
         diffList = testsThatDiffer.new;
       }
-      diffList.push({oldTest, newTest});
+      diffList.push({ oldTest, newTest });
     });
-    return {testsThatDiffer, total, numNew, numFixes, numRegressions};
+    return { testsThatDiffer, total, numNew, numFixes, numRegressions };
   };
 
   downloadCircleResults = () => {
@@ -390,8 +446,9 @@ export default class Tyrant extends EventEmitter {
     const VCS_TYPE = 'github';
     const USERNAME = 'code-dot-org';
     const PROJECT = 'JS-Interpreter';
-    const REQUEST_PATH = `https://circleci.com/api/v1.1/project/${VCS_TYPE}/${USERNAME}/${PROJECT}/${this
-      .argv.circleBuild}/artifacts`;
+    const REQUEST_PATH = `https://circleci.com/api/v1.1/project/${VCS_TYPE}/${
+      USERNAME
+    }/${PROJECT}/${this.argv.circleBuild}/artifacts`;
 
     return fetch(REQUEST_PATH)
       .then(res => res.json())
@@ -426,199 +483,202 @@ export default class Tyrant extends EventEmitter {
   runTests = (outputFilePath, verboseOutputFilePath) => {
     return new Promise(resolve => {
       const testGlobs = this.getTestGlobs();
-      globber(testGlobs).toArray().subscribe(paths => {
-        let globs = testGlobs;
-        if (this.argv.splitInto) {
-          // split up the globs in circle according to which container we are running on
-          paths = paths
-            .sort()
-            .filter(
-              (path, index) =>
-                index % parseInt(this.argv.splitInto) ===
-                parseInt(this.argv.splitIndex)
-            );
-          globs = paths;
-        }
-        this.log(
-          `running around ${paths.length * 2} tests with ${this.argv
-            .threads} threads...`
-        );
-
-        const bar = new ProgressBar(
-          '[:bar] :current/:total :percent | :minutes left | R::regressed, F::fixed, N::new',
-          {
-            total: paths.length * 2, // each file gets run in strict and unstrict mode
-            width: 50,
+      globber(testGlobs)
+        .toArray()
+        .subscribe(paths => {
+          let globs = testGlobs;
+          if (this.argv.splitInto) {
+            // split up the globs in circle according to which container we are running on
+            paths = paths
+              .sort()
+              .filter(
+                (path, index) =>
+                  index % parseInt(this.argv.splitInto) ===
+                  parseInt(this.argv.splitIndex)
+              );
+            globs = paths;
           }
-        );
+          this.log(
+            `running around ${paths.length * 2} tests with ${
+              this.argv.threads
+            } threads...`
+          );
 
-        let count = 1;
-        const outputFile = fs.openSync(outputFilePath, 'w');
-        let verboseOutputFile;
-        if (this.argv.verbose) {
-          verboseOutputFile = fs.openSync(verboseOutputFilePath, 'w');
-        }
-        let startTime;
-        let running = false;
-        fs.appendFileSync(outputFile, '[\n');
-        if (verboseOutputFile) {
-          fs.appendFileSync(verboseOutputFile, '[\n');
-        }
-        running = true;
+          const bar = new ProgressBar(
+            '[:bar] :current/:total :percent | :minutes left | R::regressed, F::fixed, N::new',
+            {
+              total: paths.length * 2, // each file gets run in strict and unstrict mode
+              width: 50,
+            }
+          );
 
-        const finishWritingOutput = () => {
-          fs.appendFileSync(outputFile, ']\n');
-          fs.closeSync(outputFile);
+          let count = 1;
+          const outputFile = fs.openSync(outputFilePath, 'w');
+          let verboseOutputFile;
+          if (this.argv.verbose) {
+            verboseOutputFile = fs.openSync(verboseOutputFilePath, 'w');
+          }
+          let startTime;
+          let running = false;
+          fs.appendFileSync(outputFile, '[\n');
           if (verboseOutputFile) {
-            fs.appendFileSync(verboseOutputFile, ']\n');
-            fs.closeSync(verboseOutputFile);
+            fs.appendFileSync(verboseOutputFile, '[\n');
           }
-        };
-        process.on('SIGINT', () => {
-          if (running) {
-            this.log(
-              chalk.bold(
-                chalk.red(
-                  '\n\nStopped before all tests were run. Results are not complete!'
+          running = true;
+
+          const finishWritingOutput = () => {
+            fs.appendFileSync(outputFile, ']\n');
+            fs.closeSync(outputFile);
+            if (verboseOutputFile) {
+              fs.appendFileSync(verboseOutputFile, ']\n');
+              fs.closeSync(verboseOutputFile);
+            }
+          };
+          process.on('SIGINT', () => {
+            if (running) {
+              this.log(
+                chalk.bold(
+                  chalk.red(
+                    '\n\nStopped before all tests were run. Results are not complete!'
+                  )
                 )
-              )
-            );
-            finishWritingOutput();
-          }
-          this.processTestResults();
-          process.exit(1);
-        });
-        this.emit(Events.STARTED_RUNNING, {numTests: paths.length * 2});
-        runner.run({
-          compiledFilesDir:
-            this.argv.compiledOut && path.resolve(this.argv.compiledOut),
-          threads: this.argv.threads,
-          timeout: 60000,
-          hostType: 'js-interpreter',
-          hostPath:
-            this.argv.hostPath ||
-            path.resolve(__dirname, '../../../../js-interpreter/bin/run.js'),
-          hostArgs: this.argv.interpreter
-            ? ['--interpreter', this.argv.interpreter]
-            : undefined,
-          test262Dir: path.resolve(this.argv.root, 'test262'),
-          reporter: results => {
-            results.on('start', () => {
-              startTime = new Date().getTime();
-            });
-            results.on('end', () => {
-              if (running) {
-                finishWritingOutput();
-              }
-              running = false;
-              this.log(`${'\n'}finished running ${count} tests`);
-              resolve();
-            });
-            let numRegressed = 0;
-            let numFixed = 0;
-            let numNew = 0;
-            results.on('test end', test => {
-              test.file = fs
-                .realpathSync(test.file)
-                .replace(path.resolve(this.argv.root, '..') + '/', '');
-              const color = test.result.pass ? chalk.green : chalk.red;
-              const description = this.getTestDescription(test);
-              const write = (...args) => {
-                if (!this.argv.progress) {
-                  this.write(...args);
+              );
+              finishWritingOutput();
+            }
+            this.processTestResults();
+            process.exit(1);
+          });
+          this.emit(Events.STARTED_RUNNING, { numTests: paths.length * 2 });
+          runner.run({
+            compiledFilesDir:
+              this.argv.compiledOut && path.resolve(this.argv.compiledOut),
+            threads: this.argv.threads,
+            timeout: 60000,
+            hostType: 'js-interpreter',
+            hostPath:
+              this.argv.hostPath ||
+              path.resolve(__dirname, '../../../../js-interpreter/bin/run.js'),
+            hostArgs: this.argv.interpreter
+              ? ['--interpreter', this.argv.interpreter]
+              : undefined,
+            test262Dir: path.resolve(this.argv.root, 'test262'),
+            reporter: results => {
+              results.on('start', () => {
+                startTime = new Date().getTime();
+              });
+              results.on('end', () => {
+                if (running) {
+                  finishWritingOutput();
                 }
-              };
-              let testDiff;
-              if (this.argv.diff) {
-                testDiff = this.getTestDiff(test);
-                if (testDiff.isRegression) {
-                  write('R');
-                  numRegressed++;
-                } else if (testDiff.isFix) {
-                  write('F');
-                  numFixed++;
-                } else if (testDiff.isNew) {
-                  write('N');
-                  numNew++;
+                running = false;
+                this.log(`${'\n'}finished running ${count} tests`);
+                resolve();
+              });
+              let numRegressed = 0;
+              let numFixed = 0;
+              let numNew = 0;
+              results.on('test end', test => {
+                test.file = fs
+                  .realpathSync(test.file)
+                  .replace(path.resolve(this.argv.root, '..') + '/', '');
+                const color = test.result.pass ? chalk.green : chalk.red;
+                const description = this.getTestDescription(test);
+                const write = (...args) => {
+                  if (!this.argv.progress) {
+                    this.write(...args);
+                  }
+                };
+                let testDiff;
+                if (this.argv.diff) {
+                  testDiff = this.getTestDiff(test);
+                  if (testDiff.isRegression) {
+                    write('R');
+                    numRegressed++;
+                  } else if (testDiff.isFix) {
+                    write('F');
+                    numFixed++;
+                  } else if (testDiff.isNew) {
+                    write('N');
+                    numNew++;
+                  } else {
+                    write('.');
+                  }
                 } else {
                   write('.');
                 }
-              } else {
-                write('.');
-              }
-              if (this.argv.verbose) {
-                write(` ${count + 1} ${chalk.bold(color(description))}\n`);
-                write(`   ${chalk.gray(test.file)}\n`);
-                write(`   ${chalk.gray(test.result.message)}\n`);
-              } else if (count % 80 === 0) {
-                write('\n');
-              }
-              if (count > 1) {
-                fs.appendFileSync(outputFile, ',\n');
-                if (verboseOutputFile) {
-                  fs.appendFileSync(verboseOutputFile, ',\n');
+                if (this.argv.verbose) {
+                  write(` ${count + 1} ${chalk.bold(color(description))}\n`);
+                  write(`   ${chalk.gray(test.file)}\n`);
+                  write(`   ${chalk.gray(test.result.message)}\n`);
+                } else if (count % 80 === 0) {
+                  write('\n');
                 }
-              }
+                if (count > 1) {
+                  fs.appendFileSync(outputFile, ',\n');
+                  if (verboseOutputFile) {
+                    fs.appendFileSync(verboseOutputFile, ',\n');
+                  }
+                }
 
-              fs.appendFileSync(
-                outputFile,
-                JSON.stringify(
-                  {
-                    file: test.file,
-                    attrs: test.attrs,
-                    result: test.result,
-                  },
-                  null,
-                  2
-                ) + '\n'
-              );
-              if (verboseOutputFile) {
                 fs.appendFileSync(
-                  verboseOutputFile,
-                  JSON.stringify(test, null, 2) + '\n'
+                  outputFile,
+                  JSON.stringify(
+                    {
+                      file: test.file,
+                      attrs: test.attrs,
+                      result: test.result,
+                    },
+                    null,
+                    2
+                  ) + '\n'
                 );
-              }
-
-              count++;
-              if (this.argv.progress) {
-                let secondsRemaining =
-                  (new Date().getTime() - startTime) /
-                  bar.curr *
-                  (bar.total - bar.curr) /
-                  1000;
-                let eta;
-                if (secondsRemaining > 60) {
-                  eta = `${Math.floor(secondsRemaining / 60)}m`;
-                } else {
-                  eta = `${Math.floor(secondsRemaining)}s`;
+                if (verboseOutputFile) {
+                  fs.appendFileSync(
+                    verboseOutputFile,
+                    JSON.stringify(test, null, 2) + '\n'
+                  );
                 }
-                bar.tick(
-                  // tick twice for tests that don't run in both strict and non-strict modes
-                  !test.attrs.flags.onlyStrict &&
-                  !test.attrs.flags.noStrict &&
-                  !test.attrs.flags.raw
-                    ? 1
-                    : 2,
-                  {
+
+                count++;
+                if (this.argv.progress) {
+                  let secondsRemaining =
+                    (new Date().getTime() - startTime) /
+                    bar.curr *
+                    (bar.total - bar.curr) /
+                    1000;
+                  let eta;
+                  if (secondsRemaining > 60) {
+                    eta = `${Math.floor(secondsRemaining / 60)}m`;
+                  } else {
+                    eta = `${Math.floor(secondsRemaining)}s`;
+                  }
+                  bar.tick(
+                    // tick twice for tests that don't run in both strict and non-strict modes
+                    !test.attrs.flags.onlyStrict &&
+                    !test.attrs.flags.noStrict &&
+                    !test.attrs.flags.raw
+                      ? 1
+                      : 2,
+                    {
+                      regressed: numRegressed,
+                      fixed: numFixed,
+                      new: numNew,
+                      minutes: eta,
+                    }
+                  );
+                  this.emit(Events.TICK, {
                     regressed: numRegressed,
                     fixed: numFixed,
                     new: numNew,
-                    minutes: eta,
-                  }
-                );
-                this.emit(Events.TICK, {
-                  regressed: numRegressed,
-                  fixed: numFixed,
-                  new: numNew,
-                  minutes: secondsRemaining / 60,
-                  test: {...test, ...testDiff},
-                });
-              }
-            });
-          },
-          globs: globs,
+                    minutes: secondsRemaining / 60,
+                    test: { ...test, ...testDiff },
+                  });
+                }
+              });
+            },
+            globs: globs,
+          });
         });
-      });
     });
   };
 
@@ -642,62 +702,7 @@ export default class Tyrant extends EventEmitter {
       new Set(
         this.argv._.length > 0
           ? this.argv._
-          : [
-              'test262/test/annexB/**/*.js',
-              'test262/test/harness/**/*.js',
-              'test262/test/intl402/**/*.js',
-              'test262/test/language/**/*.js',
-              'test262/test/built-ins/Array/**/*.js',
-              'test262/test/built-ins/ArrayBuffer/**/*.js',
-              'test262/test/built-ins/ArrayIteratorPrototype/**/*.js',
-              'test262/test/built-ins/AsyncFunction/**/*.js',
-              'test262/test/built-ins/Atomics/**/*.js',
-              'test262/test/built-ins/Boolean/**/*.js',
-              'test262/test/built-ins/DataView/**/*.js',
-              'test262/test/built-ins/Date/**/*.js',
-              'test262/test/built-ins/decodeURI/**/*.js',
-              'test262/test/built-ins/decodeURIComponent/**/*.js',
-              'test262/test/built-ins/encodeURI/**/*.js',
-              'test262/test/built-ins/encodeURIComponent/**/*.js',
-              'test262/test/built-ins/Error/**/*.js',
-              'test262/test/built-ins/eval/**/*.js',
-              'test262/test/built-ins/Function/**/*.js',
-              'test262/test/built-ins/GeneratorFunction/**/*.js',
-              'test262/test/built-ins/GeneratorPrototype/**/*.js',
-              'test262/test/built-ins/global/**/*.js',
-              'test262/test/built-ins/Infinity/**/*.js',
-              'test262/test/built-ins/isFinite/**/*.js',
-              'test262/test/built-ins/isNaN/**/*.js',
-              'test262/test/built-ins/IteratorPrototype/**/*.js',
-              'test262/test/built-ins/JSON/**/*.js',
-              'test262/test/built-ins/Map/**/*.js',
-              'test262/test/built-ins/MapIteratorPrototype/**/*.js',
-              'test262/test/built-ins/Math/**/*.js',
-              'test262/test/built-ins/NaN/**/*.js',
-              'test262/test/built-ins/NativeErrors/**/*.js',
-              'test262/test/built-ins/Number/**/*.js',
-              'test262/test/built-ins/Object/**/*.js',
-              'test262/test/built-ins/parseFloat/**/*.js',
-              'test262/test/built-ins/parseInt/**/*.js',
-              'test262/test/built-ins/Promise/**/*.js',
-              'test262/test/built-ins/Proxy/**/*.js',
-              'test262/test/built-ins/Reflect/**/*.js',
-              'test262/test/built-ins/RegExp/**/*.js',
-              'test262/test/built-ins/Set/**/*.js',
-              'test262/test/built-ins/SetIteratorPrototype/**/*.js',
-              'test262/test/built-ins/SharedArrayBuffer/**/*.js',
-              'test262/test/built-ins/Simd/**/*.js',
-              'test262/test/built-ins/String/**/*.js',
-              'test262/test/built-ins/StringIteratorPrototype/**/*.js',
-              'test262/test/built-ins/Symbol/**/*.js',
-              'test262/test/built-ins/ThrowTypeError/**/*.js',
-              'test262/test/built-ins/TypedArray/**/*.js',
-              // this test file currently makes the interpreter explode.
-              //  'test262/test/built-ins/TypedArrays/**/*.js',
-              'test262/test/built-ins/undefined/**/*.js',
-              'test262/test/built-ins/WeakMap/**/*.js',
-              'test262/test/built-ins/WeakSet/**/*.js',
-            ].map(t => path.resolve(this.argv.root, t))
+          : DEFAULT_TEST_GLOBS.map(t => path.resolve(this.argv.root, t))
       )
     );
   };

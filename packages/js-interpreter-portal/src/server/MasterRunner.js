@@ -5,6 +5,9 @@ import SlaveRunner from '../slave/SlaveRunner';
 export default class MasterRunner {
   static SlaveClass = SlaveRunner;
   latestResults = [];
+  clientState = {
+    running: false,
+  };
 
   getSavedResults = () =>
     this.slaveManager.emitToPrimarySlave('SlaveRunner.getSavedResults');
@@ -27,19 +30,27 @@ export default class MasterRunner {
 
   execute = async ({ tests, rerun }) => {
     this.latestResults = [];
-    this.slaveManager.slaves.forEach((slave, splitIndex, slaves) => {
-      this.slaveManager.getSocketFor(slave).emit(
-        'SlaveRunner.execute',
-        {
-          splitIndex,
-          splitInto: slaves.length,
-          tests,
-          rerun,
-        },
-        newResults => {
-          this.latestResults = [...this.latestResults, ...newResults];
-        }
-      );
-    });
+    this.setClientState({ running: true });
+    await Promise.all(
+      this.slaveManager.slaves.map(
+        (slave, splitIndex, slaves) =>
+          new Promise(resolve => {
+            this.slaveManager.getSocketFor(slave).emit(
+              'SlaveRunner.execute',
+              {
+                splitIndex,
+                splitInto: slaves.length,
+                tests,
+                rerun,
+              },
+              newResults => {
+                this.latestResults = [...this.latestResults, ...newResults];
+                resolve(newResults);
+              }
+            );
+          })
+      )
+    );
+    this.setClientState({ running: false });
   };
 }

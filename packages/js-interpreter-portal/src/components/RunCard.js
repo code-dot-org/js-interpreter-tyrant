@@ -13,6 +13,7 @@ import {
   TextField,
   Typography,
   Paper,
+  CircularProgress,
 } from 'material-ui';
 import { withTheme } from 'material-ui/styles';
 import { grey } from 'material-ui/colors';
@@ -22,7 +23,7 @@ import Connection from '../client/Connection';
 import TyrantEventQueue, { Events } from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
 import TestResultsTable from './TestResultsTable';
-import { fullTestName } from '../util';
+import { shortTestName, fullTestName } from '../util';
 
 class GlobInput extends Component {
   state = {
@@ -87,10 +88,12 @@ export default class RunCard extends Component {
 
   state = {
     slaves: {},
+    masterState: {},
     savedResults: null,
     tab: 'new-results',
     testGlob: '',
     canRun: false,
+    loadingNewResults: false,
   };
 
   run = tests => {
@@ -152,8 +155,11 @@ export default class RunCard extends Component {
 
   async componentDidMount() {
     TyrantEventQueue.on('multi', this.onTyrantEvents);
-    Connection.MasterRunner.onClientStateChange(newState => {
-      this.setState(newState);
+    Connection.MasterRunner.onClientStateChange(masterState => {
+      this.setState({ masterState });
+    });
+    this.setState({
+      masterState: await Connection.MasterRunner.getClientState(),
     });
     Connection.SlaveRunner.onClientStateChange(newState =>
       this.setSlaveState(newState.slaveId, newState)
@@ -176,10 +182,12 @@ export default class RunCard extends Component {
   };
 
   onClickLoadNewResults = async () => {
+    this.setState({ loadingNewResults: true });
     const newResults = await Connection.MasterRunner.getNewResults();
     newResults.forEach(({ result: results, slaveId }) => {
       this.setSlaveState(slaveId, { results });
     });
+    this.setState({ loadingNewResults: false });
   };
 
   onClickSaveResults = async () => {
@@ -187,9 +195,17 @@ export default class RunCard extends Component {
   };
 
   onClickRerunTests = async tests => {
-    Connection.MasterRunner.execute({ tests, rerun: true });
+    await Connection.MasterRunner.execute({ tests, rerun: true });
   };
   onClickRun = tests => this.run(tests);
+
+  onClickRerunRegressedTests = () => {
+    const tests = this.getAggregateSlaveState()
+      .results.filter(test => test.isRegression)
+      .map(test => fullTestName(shortTestName(test.file)));
+    this.onClickRerunTests(tests);
+  };
+
   onClickKill = async () => {
     await Connection.MasterRunner.kill();
   };
@@ -279,15 +295,19 @@ export default class RunCard extends Component {
               <div>
                 <CardContent>
                   {state.results.length === 0 &&
-                    !state.running > 0 && (
+                    state.running <= 0 && (
                       <div style={{ textAlign: 'center' }}>
                         <Typography type="body1">
                           Run tests to see new results or...
                         </Typography>
+                        {this.state.loadingNewResults && (
+                          <CircularProgress size={24} />
+                        )}
                         <Button
                           raised
                           color="primary"
                           onClick={this.onClickLoadNewResults}
+                          disabled={this.state.loadingNewResults}
                         >
                           Load New Results
                         </Button>
@@ -339,7 +359,7 @@ export default class RunCard extends Component {
                     color="primary"
                     raised
                     disabled={numRegressions === 0 || state.running > 0}
-                    onClick={this.onClickRerunTests}
+                    onClick={this.onClickRerunRegressedTests}
                   >
                     Rerun {numRegressions} Tests
                   </Button>

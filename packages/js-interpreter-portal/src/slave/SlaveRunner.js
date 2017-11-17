@@ -120,7 +120,10 @@ export default class SlaveRunner {
           }
         })
         .on(Events.STARTED_EXECUTION, () =>
-          this.setClientState({ running: true })
+          this.setClientState({
+            running: true,
+            eventTrigger: 'STARTED_EXECUTION',
+          })
         )
         .on(Events.STARTED_RUNNING, ({ numTests }) =>
           this.setClientState({ completed: 0, numTests })
@@ -135,9 +138,12 @@ export default class SlaveRunner {
             minutes,
           });
         })
-        .on(Events.FINISHED_EXECUTION, () =>
-          this.setClientState({ running: false })
-        )
+        .on(Events.FINISHED_EXECUTION, () => {
+          this.setClientState({
+            running: false,
+            eventTrigger: 'FINISHED_EXECUTION',
+          });
+        })
         .on(Events.RERUNNING_TESTS, ({ files, retriesLeft }) => {
           this._onTyrantEvent(Events.RERUNNING_TESTS, {
             files: Array.from(files),
