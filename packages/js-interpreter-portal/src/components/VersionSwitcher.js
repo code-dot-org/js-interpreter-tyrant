@@ -21,6 +21,7 @@ import styled from 'styled-components';
 
 import { ClientEvents } from '../constants';
 import Connection from '../client/Connection';
+import { sortById } from '../util';
 
 import MainCard from './MainCard';
 
@@ -262,7 +263,7 @@ export default class VersionSwitcher extends Component {
         </CardContent>
         <CardContent>
           <Card>
-            {Object.values(this.state.slaves)
+            {sortById(Object.values(this.state.slaves))
               .filter(slaveState => slaveState.updating || slaveState.lastLog)
               .map(slaveState => (
                 <CardContent key={slaveState.slaveId}>

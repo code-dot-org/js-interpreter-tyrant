@@ -1,7 +1,7 @@
 import child_process from 'child_process';
-import sortBy from 'lodash.sortby';
 import RPCInterface from './RPCInterface';
 import Heroku from 'heroku-client';
+import { sortById } from '../util';
 
 @RPCInterface({ type: 'master' })
 export default class SlaveManager {
@@ -53,10 +53,7 @@ export default class SlaveManager {
     });
     if (!found) {
       slaves.push({ id, ...state });
-      slaves = sortBy(
-        slaves,
-        ({ id }) => (id.includes('.') ? id.split('.')[1] : id)
-      );
+      slaves = sortById(slaves);
     }
     this.setClientState({
       slaves,
@@ -115,12 +112,12 @@ export default class SlaveManager {
   }
 
   async emitToAllSlaves(event, ...args) {
-    return await Promise.all(
+    return (await Promise.all(
       this.slaves.map(async slave => {
         const result = await this.emitToSlave(slave, event, ...args);
         return { result, slaveId: slave.id };
       })
-    );
+    )).filter(result => !!result);
   }
 
   registerSlave = async ({ id, startedAt }, socketId) => {

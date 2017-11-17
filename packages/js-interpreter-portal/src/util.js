@@ -1,3 +1,5 @@
+import sortBy from 'lodash.sortby';
+
 export function objectToArgs(obj = {}, positional = []) {
   const args = [];
   Object.keys(obj).forEach(key => {
@@ -46,4 +48,11 @@ export class Lock {
     await this.lock;
     this.lock = null;
   }
+}
+
+export function sortById(items) {
+  return sortBy(
+    items,
+    ({ id }) => (id.indexOf('.') > -1 ? id.split('.')[1] : id)
+  );
 }
