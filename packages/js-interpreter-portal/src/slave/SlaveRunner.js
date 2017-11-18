@@ -48,8 +48,8 @@ export default class SlaveRunner {
     this.setClientState({ forwardAllTyrantEvents });
   };
 
-  saveResults = async () => {
-    await this.getTyrant({ save: true }).execute();
+  saveResults = async results => {
+    this.getTyrant().saveResults(results);
   };
 
   getSavedResults = async () => {
@@ -57,6 +57,10 @@ export default class SlaveRunner {
   };
 
   getNewResults = async () => {
+    return this.getTyrant.getNewResults();
+  };
+
+  getNewDiffResults = async () => {
     const tyrant = this.getTyrant();
     return tyrant
       .getNewResults()

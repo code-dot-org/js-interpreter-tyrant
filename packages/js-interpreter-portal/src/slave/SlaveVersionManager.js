@@ -3,6 +3,7 @@ import fs from 'fs';
 import Git, {
   Tag,
   Repository,
+  Reference,
   Checkout,
   Remote,
   Merge,
@@ -130,10 +131,32 @@ export default class SlaveVersionManager {
     await this.repo.mergeBranches(
       'master',
       `${remote}/master`,
-      Signature.now('Tyrant', 'paul@code.org'),
+      this.getSignature(),
       Merge.PREFERENCE.NONE
     );
   };
+
+  getSignature() {
+    return Signature.now('Tyrant', 'paul@code.org');
+  }
+
+  async commitFile(filePath, commitMessage) {
+    const index = await this.repo.refreshIndex();
+    await index.addByPath(filePath);
+    await index.write();
+    const oid = await index.writeTree();
+    const parent = await this.repo.getMasterCommit();
+    const author = this.getSignature();
+    const committer = this.getSignature();
+    return await this.repo.createCommit(
+      'HEAD',
+      author,
+      committer,
+      commitMessage,
+      oid,
+      [parent]
+    );
+  }
 
   async getVersions() {
     const versions = await Tag.list(this.repo);

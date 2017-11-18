@@ -193,8 +193,15 @@ export default class Tyrant extends EventEmitter {
   execute = async () => {
     this.emit(Events.STARTED_EXECUTION);
     if (this.argv.run) {
-      await this.runTests(this.RESULTS_FILE, this.VERBOSE_RESULTS_FILE);
-      await this.postRun();
+      const numTestRan = await this.runTests(
+        this.RESULTS_FILE,
+        this.VERBOSE_RESULTS_FILE
+      );
+      if (numTestRan > 0) {
+        await this.postRun();
+      } else {
+        this.emit(Events.FINISHED_EXECUTION);
+      }
     } else if (this.argv.circleBuild) {
       await this.downloadCircleResults();
       this.processTestResults();
@@ -498,6 +505,11 @@ export default class Tyrant extends EventEmitter {
               );
             globs = paths;
           }
+          if (globs.length === 0) {
+            console.log('No tests to run after globbing.');
+            resolve(0);
+            return;
+          }
           this.log(
             `running around ${paths.length * 2} tests with ${
               this.argv.threads
@@ -572,7 +584,7 @@ export default class Tyrant extends EventEmitter {
                 }
                 running = false;
                 this.log(`${'\n'}finished running ${count} tests`);
-                resolve();
+                resolve(bar.curr);
               });
               let numRegressed = 0;
               let numFixed = 0;

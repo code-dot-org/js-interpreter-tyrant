@@ -183,7 +183,7 @@ export default class RunCard extends Component {
 
   onClickLoadNewResults = async () => {
     this.setState({ loadingNewResults: true });
-    const newResults = await Connection.MasterRunner.getNewResults();
+    const newResults = await Connection.MasterRunner.getNewDiffResults();
     newResults.forEach(({ result: results, slaveId }) => {
       this.setSlaveState(slaveId, { results });
     });

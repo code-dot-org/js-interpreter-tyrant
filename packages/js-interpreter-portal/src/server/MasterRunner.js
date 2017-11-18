@@ -12,11 +12,23 @@ export default class MasterRunner {
   getSavedResults = () =>
     this.slaveManager.emitToPrimarySlave('SlaveRunner.getSavedResults');
 
-  getNewResults = () =>
-    this.slaveManager.emitToAllSlaves('SlaveRunner.getNewResults');
+  getNewDiffResults = () =>
+    this.slaveManager.emitToAllSlaves('SlaveRunner.getNewDiffResults');
 
   saveResults = async () => {
-    await this.slaveManager.emitToAllSlaves('SlaveRunner.saveResults');
+    const allNewResults = await this.slaveManager.emitToAllSlaves(
+      'SlaveRunner.getNewResults'
+    );
+    let combinedResults = [];
+    allNewResults.forEach(
+      ({ result }) => (combinedResults = [...combinedResults, ...result])
+    );
+    await this.slaveManager.emitToPrimarySlave(
+      'SlaveRunner.saveResults',
+      combinedResults
+    );
+    //    await this.slaveManager.emitToPrimarySlave('SlaveRunner.pushUpstream');
+    this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
   };
 
   getSlaveStates = () =>
