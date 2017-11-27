@@ -487,6 +487,27 @@ export default class Tyrant extends EventEmitter {
       });
   };
 
+  getTestFiles() {
+    const testGlobs = this.getTestGlobs();
+    return new Promise(resolve =>
+      globber(testGlobs)
+        .toArray()
+        .subscribe(paths => {
+          if (this.argv.splitInto) {
+            // split up the globs in circle according to which container we are running on
+            paths = paths
+              .sort()
+              .filter(
+                (path, index) =>
+                  index % parseInt(this.argv.splitInto) ===
+                  parseInt(this.argv.splitIndex)
+              );
+          }
+          resolve(paths);
+        })
+    );
+  }
+
   runTests = (outputFilePath, verboseOutputFilePath) => {
     return new Promise(resolve => {
       const testGlobs = this.getTestGlobs();

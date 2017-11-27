@@ -1,11 +1,19 @@
+import fs from 'fs';
+import request from 'request';
+import path from 'path';
 import throttle from 'lodash.throttle';
 import { ClientEvents } from '../constants';
-import { Repos } from './SlaveVersionManager';
+import { REPO_ROOT, Repos } from './SlaveVersionManager';
+import ChildProcess from 'child_process';
+import { promisify } from 'util';
 import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
 import { Events } from '@code-dot-org/js-interpreter-tyrant/dist/constants';
 import RPCInterface from '../server/RPCInterface';
+import Connection from '../client/Connection';
 import { objectToArgs } from '../util';
 import { rootLock } from './locks';
+
+const exec = promisify(ChildProcess.exec);
 
 const MIN_MS_BETWEEN_EMIT = 1000;
 
@@ -19,8 +27,9 @@ export default class SlaveRunner {
 
   emitQueue = [];
 
-  constructor(versionManager) {
+  constructor(versionManager, masterServerUrl) {
     this.versionManager = versionManager;
+    this.masterServerUrl = masterServerUrl;
   }
 
   _onTyrantEvent = (eventName, data) => {
@@ -97,7 +106,54 @@ export default class SlaveRunner {
     return new Tyrant(cliArgs);
   }
 
-  execute = async ({ splitIndex, splitInto, tests, rerun }) => {
+  start = async () => {
+    let nextTests = await Connection.MasterRunner.getNextTests();
+    const repoPath = this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG);
+    if (!fs.existsSync(repoPath)) {
+      console.log('downloading zip archive');
+
+      const zipPath = path.resolve(
+        REPO_ROOT,
+        `${this.slaveId}-${nextTests.sha}.zip`
+      );
+
+      let cmds = [
+        `curl ${this.masterServerUrl}/gitzips/${nextTests.sha} -o ${zipPath}`,
+        `mkdir -p ${repoPath}`,
+        `unzip -q ${zipPath} -d ${repoPath}`,
+      ];
+      for (const cmd of cmds) {
+        console.log(cmd);
+        await exec(cmd);
+      }
+      cmds = [
+        'yarn',
+        'curl https://codeload.github.com/tc39/test262/zip/89160ff5b7cb6d5f8938b4756829100110a14d5f -o test262.zip',
+        'unzip -q test262.zip',
+        'rm -rf tyrant/test262',
+        'mv test262-89160ff5b7cb6d5f8938b4756829100110a14d5f tyrant/test262',
+      ];
+      for (const cmd of cmds) {
+        console.log(cmd);
+        await exec(cmd, { cwd: repoPath });
+      }
+    }
+
+    while (nextTests.tests.length > 0) {
+      const { tests, sha, numThreads } = nextTests;
+      console.log('running these tests:', tests);
+      await this.execute({ tests, numThreads, sha });
+
+      nextTests = await Connection.MasterRunner.getNextTests();
+      if (nextTests.sha !== sha) {
+        throw new Error('Did not expect commit sha to change');
+      }
+    }
+    console.log('No more tests left. Exiting.');
+    process.exit(0);
+  };
+
+  execute = async ({ splitIndex, splitInto, tests, rerun, numThreads }) => {
     let newResults;
     await rootLock.waitForLock(async () => {
       console.log('executing tests', tests);
@@ -110,7 +166,7 @@ export default class SlaveRunner {
           run: true,
           noExit: true,
           progress: true,
-          threads: this.clientState.numThreads,
+          threads: numThreads,
         },
         tests
           ? tests.map(path =>

@@ -11,9 +11,9 @@
     "build:client": "NODE_ENV=production webpack --config src/webpack/webpack.prod.babel.js --color -p",
     "build:server": "BABEL_ENV=server babel src -d ./es5/src",
     "build:clean": "rm -rf ./build",
-    "start": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --inspect --exclude src/components --exclude src/pages -- src/server/run",
+    "start": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --exclude src/components --exclude src/pages -- src/server/run",
     "start:prod": "NODE_ENV=production node es5/src/server",
-    "startSlave": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --exclude src/components -- src/slave/run-integration-server",
+    "startSlave": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --inspect --exclude src/components -- src/slave/run-integration-server",
     "lint": "eslint src"
   },
   "engines": {
@@ -74,9 +74,11 @@
     "react-helmet": "^5.2.0",
     "react-router": "^4.2.0",
     "react-router-dom": "^4.2.2",
+    "request-promise-native": "^1.0.5",
     "rimraf": "^2.6.2",
     "socket.io": "^2.0.3",
     "styled-components": "^2.1.2",
+    "unzip": "^0.1.11",
     "uuid": "^3.1.0",
     "yargs": "^9.0.1"
   }

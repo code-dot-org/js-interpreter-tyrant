@@ -171,22 +171,21 @@ export default class VersionSwitcher extends Component {
   static propTypes = {};
 
   state = {
-    versions: [],
-    commits: [],
-    upstream: [],
     tab: 'tags',
     slaves: {},
-    masterState: { operationLog: [] },
-  };
-
-  setSlaveState = newState => {
-    const slaveState = this.state.slaves[newState.slaveId] || {
+    masterState: {
       lastLog: '',
       currentVersion: null,
       versions: [],
       commits: [],
       upstream: [],
       updating: false,
+    },
+  };
+
+  setSlaveState = newState => {
+    const slaveState = this.state.slaves[newState.slaveId] || {
+      lastLog: '',
     };
     this.setState({
       slaves: {
@@ -214,6 +213,8 @@ export default class VersionSwitcher extends Component {
     this.setMasterState(
       await Connection.MasterVersionManager.getClientState(this.setMasterState)
     );
+
+    Connection.MasterVersionManager.update();
   }
 
   selectVersion = sha => {
@@ -237,32 +238,26 @@ export default class VersionSwitcher extends Component {
   };
 
   render() {
-    const { upstream, commits, currentVersion, versions } =
-      Object.values(this.state.slaves)[0] || {};
+    const {
+      upstream,
+      commits,
+      currentVersion,
+      versions,
+    } = this.state.masterState;
     const upstreamCommits =
       upstream && upstream.filter(({ commit }) => !commit.merged).reverse();
     return (
       <MainCard>
         <CardHeader title="Interpreter Versions" />
         <CardContent>
-          <CardContent>
-            <Typography type="subheading">Operations</Typography>
-          </CardContent>
           <Card>
-            <List>
-              {this.state.masterState.operationLog.map(
-                ({ opType, args }, index) => (
-                  <ListItem divider dense key={index}>
-                    {opType}(
-                    {args.map(arg => <span>{JSON.stringify(arg)} </span>)})
-                  </ListItem>
-                )
-              )}
-            </List>
-          </Card>
-        </CardContent>
-        <CardContent>
-          <Card>
+            <CardContent>
+              <Typography type="body1">
+                {this.state.masterState.lastLog &&
+                  this.state.masterState.lastLog}
+              </Typography>
+              {this.state.masterState.updating && <LinearProgress />}
+            </CardContent>
             {sortBy(Object.values(this.state.slaves), s =>
               parseInt(s.slaveId.split('.')[1])
             )

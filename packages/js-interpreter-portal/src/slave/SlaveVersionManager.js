@@ -18,7 +18,7 @@ import RPCInterface from '../server/RPCInterface';
 import Connection from '../client/Connection';
 import { rootLock } from './locks';
 
-const REPO_ROOT = '/tmp/js-interpreter-repos';
+export const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
 const rmdir = promisify(rimraf);
 export const Repos = {
@@ -55,6 +55,10 @@ export default class SlaveVersionManager {
     upstream: [],
     updating: false,
   };
+
+  constructor(masterServerUrl) {
+    this.masterServerUrl;
+  }
 
   log(msg) {
     console.log(msg);

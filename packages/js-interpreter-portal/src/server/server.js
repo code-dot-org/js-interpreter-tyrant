@@ -50,7 +50,7 @@ const server = app.listen(MASTER_PORT, host, err => {
 });
 console.log('listening on', host, MASTER_PORT);
 
-const socketAPI = new SocketAPI(SocketIO(server));
+const socketAPI = new SocketAPI(SocketIO(server), app);
 console.log('ready to accept socket.io connections');
 
 app.get('/test-results-new.json', (req, res) => {

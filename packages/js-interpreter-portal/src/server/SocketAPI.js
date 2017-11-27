@@ -14,12 +14,18 @@ export default class SocketAPI {
     },
   };
 
-  constructor(io) {
+  constructor(io, app) {
+    this.app = app;
     this.io = io;
     this.sockets = {};
     this.slaveManager = new SlaveManager(this.io);
     this.versionManager = new MasterVersionManager(this.io, this.slaveManager);
-    this.masterRunner = new MasterRunner(this.io, this.slaveManager);
+    this.masterRunner = new MasterRunner(
+      this.io,
+      this.slaveManager,
+      this.versionManager
+    );
+    this.app.get('/gitzips/:sha', this.handleGitZipRequest);
 
     this.io.on('connection', this.onConnection);
 
@@ -28,6 +34,11 @@ export default class SocketAPI {
       this.slaveManager.setConfig({ numSlaves: 0 });
     }
   }
+
+  handleGitZipRequest = async (req, res) => {
+    const filePath = await this.versionManager.getArchive(req.params.sha);
+    res.sendFile(filePath);
+  };
 
   getEventHandler = eventName => (...args) => this.handlers[eventName](...args);
 

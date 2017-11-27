@@ -24,49 +24,6 @@ import Connection from '../client/Connection';
 import MainCard from './MainCard';
 import moment from 'moment-mini';
 
-const NumberDropdown = withStyles({
-  formControl: {
-    minWidth: 200,
-    display: 'block',
-  },
-})(function NumberDropdown({
-  start,
-  count,
-  id,
-  value,
-  onChange,
-  label,
-  classes,
-  loading,
-}) {
-  const items = [];
-  for (let i = start; i < start + count; i++) {
-    items.push(
-      <MenuItem key={i} value={i}>
-        {i}
-      </MenuItem>
-    );
-  }
-  return (
-    <FormControl className={classes.formControl}>
-      <InputLabel htmlFor={id}>{label}</InputLabel>
-      <Select
-        value={value}
-        onChange={onChange}
-        input={<Input id={id} />}
-        style={{ minWidth: 70 }}
-        renderValue={value => (
-          <span>
-            {value} {loading && <CircularProgress size={24} />}
-          </span>
-        )}
-      >
-        {items}
-      </Select>
-    </FormControl>
-  );
-});
-
 export default class SlavesCard extends Component {
   static propTypes = {};
 
@@ -118,27 +75,6 @@ export default class SlavesCard extends Component {
               <Typography type="body1">
                 Net Cost: ${Math.floor(cost * 1000) / 1000}
               </Typography>
-            </CardContent>
-            <CardContent>
-              <NumberDropdown
-                label="Num Slaves"
-                start={0}
-                count={40}
-                id="num-slaves"
-                value={this.state.numRequestedSlaves}
-                onChange={this.onChangeNumSlaves}
-                loading={
-                  this.state.numRequestedSlaves !== this.state.slaves.length
-                }
-              />
-              <NumberDropdown
-                label="Num Threads"
-                start={1}
-                count={8}
-                id="num-threads"
-                value={this.state.numThreads}
-                onChange={this.onChangeNumThreads}
-              />
             </CardContent>
           </Card>
         </CardContent>

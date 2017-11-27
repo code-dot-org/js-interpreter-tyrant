@@ -23,18 +23,20 @@ import Connection from '../client/Connection';
 import TyrantEventQueue, { Events } from '../client/TyrantEventQueue';
 import LogOutput from './LogOutput';
 import TestResultsTable from './TestResultsTable';
+import NumberDropdown from './NumberDropdown';
 import { shortTestName, fullTestName } from '../util';
 
 class GlobInput extends Component {
   state = {
-    value: 'built-ins/Object/defineProperty/*.js',
+    globValue: 'built-ins/Object/defineProperty/*.js',
+    numSlaves: 1,
+    numThreads: 8,
   };
 
   static propsTypes = {
     onClickRun: PropTypes.func.isRequired,
     onClickKill: PropTypes.func.isRequired,
     slaveState: PropTypes.object.isRequired,
-    canRun: PropTypes.bool.isRequired,
   };
 
   render() {
@@ -46,10 +48,26 @@ class GlobInput extends Component {
               id="paths"
               label="Test File Glob"
               helperText="Use this to limit the number of files being tested. (i.e. language/types/string/**.js)"
-              value={this.state.value}
-              onChange={e => this.setState({ value: e.target.value })}
+              value={this.state.globValue}
+              onChange={e => this.setState({ globValue: e.target.value })}
               margin="normal"
               fullWidth
+            />
+            <NumberDropdown
+              label="Num Slaves"
+              start={0}
+              count={40}
+              id="num-slaves"
+              value={this.state.numSlaves}
+              onChange={e => this.setState({ numSlaves: e.target.value })}
+            />
+            <NumberDropdown
+              label="Num Threads"
+              start={1}
+              count={8}
+              id="num-threads"
+              value={this.state.numThreads}
+              onChange={e => this.setState({ numThreads: e.target.value })}
             />
           </form>
         </CardContent>
@@ -57,17 +75,19 @@ class GlobInput extends Component {
           <Button
             color="primary"
             raised
-            disabled={this.props.slaveState.running > 0 || !this.props.canRun}
+            disabled={this.props.slaveState.running > 0}
             onClick={() =>
-              this.props.onClickRun(
-                this.state.value
+              this.props.onClickRun({
+                numThreads: this.state.numThreads,
+                numSlaves: this.state.numSlaves,
+                tests: this.state.globValue
                   .split(' ')
                   .filter(s => !!s)
-                  .map(fn => fullTestName(fn))
-              )
+                  .map(fn => fullTestName(fn)),
+              })
             }
           >
-            {this.state.value ? 'Run Tests' : 'Run All 40,0000+ Tests'}
+            {this.state.globValue ? 'Run Tests' : 'Run All 40,0000+ Tests'}
           </Button>
           <Button
             raised
@@ -92,15 +112,7 @@ export default class RunCard extends Component {
     savedResults: null,
     tab: 'new-results',
     testGlob: '',
-    canRun: false,
     loadingNewResults: false,
-  };
-
-  run = tests => {
-    Object.keys(this.state.slaves).forEach(slaveId =>
-      this.setSlaveState(slaveId, { results: [] })
-    );
-    Connection.MasterRunner.execute({ tests });
   };
 
   getSlaveState(slaveId) {
@@ -165,10 +177,6 @@ export default class RunCard extends Component {
       this.setSlaveState(newState.slaveId, newState)
     );
     const state = await Connection.SlaveManager.getClientState();
-    this.setState({ canRun: state.slaves.length > 0 });
-    Connection.SlaveManager.onClientStateChange(state =>
-      this.setState({ canRun: state.slaves.length > 0 })
-    );
 
     const slaveStates = await Connection.MasterRunner.getSlaveStates();
     slaveStates.forEach(({ result: state, slaveId }) => {
@@ -197,7 +205,18 @@ export default class RunCard extends Component {
   onClickRerunTests = async tests => {
     await Connection.MasterRunner.execute({ tests, rerun: true });
   };
-  onClickRun = tests => this.run(tests);
+  onClickRun = async ({ numThreads, numSlaves, tests }) => {
+    Object.keys(this.state.slaves).forEach(slaveId =>
+      this.setSlaveState(slaveId, { results: [] })
+    );
+    const versionState = await Connection.MasterVersionManager.getClientState();
+    Connection.MasterRunner.execute({
+      tests,
+      numThreads,
+      numSlaves,
+      sha: versionState.currentVersion.sha,
+    });
+  };
 
   onClickRerunRegressedTests = () => {
     const tests = this.getAggregateSlaveState()
@@ -259,7 +278,6 @@ export default class RunCard extends Component {
             slaveState={state}
             onClickRun={this.onClickRun}
             onClickKill={this.onClickKill}
-            canRun={this.state.canRun}
           />
         </CardContent>
         <CardContent>
