@@ -1,9 +1,7 @@
 import fs from 'fs';
-import request from 'request';
-import path from 'path';
 import throttle from 'lodash.throttle';
 import { ClientEvents } from '../constants';
-import { REPO_ROOT, Repos } from './SlaveVersionManager';
+import { Repos } from './SlaveVersionManager';
 import ChildProcess from 'child_process';
 import { promisify } from 'util';
 import Tyrant from '@code-dot-org/js-interpreter-tyrant/dist/Tyrant';
@@ -21,7 +19,6 @@ const MIN_MS_BETWEEN_EMIT = 1000;
 export default class SlaveRunner {
   eventId = 1;
   clientState = {
-    numThreads: 8,
     forwardAllTyrantEvents: false,
   };
 
@@ -45,13 +42,10 @@ export default class SlaveRunner {
   };
 
   _emitQueuedEvents = throttle(() => {
+    Connection.MasterRunner.receiveTyrantEvents(this.emitQueue);
     this.socket.emit(ClientEvents.TYRANT_EVENT, this.emitQueue);
     this.emitQueue = [];
   }, MIN_MS_BETWEEN_EMIT);
-
-  setNumThreads = async ({ numThreads }) => {
-    this.setClientState({ numThreads });
-  };
 
   setForwardAllTyrantEvents = async ({ forwardAllTyrantEvents }) => {
     this.setClientState({ forwardAllTyrantEvents });
@@ -107,18 +101,18 @@ export default class SlaveRunner {
   }
 
   start = async () => {
+    this.setClientState({ running: true });
     let nextTests = await Connection.MasterRunner.getNextTests();
     const repoPath = this.versionManager.getLocalRepoPath(Repos.CODE_DOT_ORG);
     if (!fs.existsSync(repoPath)) {
       console.log('downloading zip archive');
 
-      const zipPath = path.resolve(
-        REPO_ROOT,
-        `${this.slaveId}-${nextTests.sha}.zip`
-      );
+      const zipPath = `${this.slaveId}-${nextTests.sha}.zip`;
 
       let cmds = [
-        `curl ${this.masterServerUrl}/gitzips/${nextTests.sha} -o ${zipPath}`,
+        `curl ${this.masterServerUrl}/gitzips/${nextTests.sha} -o ${
+          zipPath
+        } -v`,
         `mkdir -p ${repoPath}`,
         `unzip -q ${zipPath} -d ${repoPath}`,
       ];
@@ -128,7 +122,7 @@ export default class SlaveRunner {
       }
       cmds = [
         'yarn',
-        'curl https://codeload.github.com/tc39/test262/zip/89160ff5b7cb6d5f8938b4756829100110a14d5f -o test262.zip',
+        'curl https://codeload.github.com/tc39/test262/zip/89160ff5b7cb6d5f8938b4756829100110a14d5f -o test262.zip -v',
         'unzip -q test262.zip',
         'rm -rf tyrant/test262',
         'mv test262-89160ff5b7cb6d5f8938b4756829100110a14d5f tyrant/test262',
@@ -141,28 +135,36 @@ export default class SlaveRunner {
 
     while (nextTests.tests.length > 0) {
       const { tests, sha, numThreads } = nextTests;
-      console.log('running these tests:', tests);
+      console.log(this.slaveId, 'running', tests.length, 'tests');
       await this.execute({ tests, numThreads, sha });
 
       nextTests = await Connection.MasterRunner.getNextTests();
       if (nextTests.sha !== sha) {
+        this.setClientState({ running: false });
         throw new Error('Did not expect commit sha to change');
       }
     }
-    console.log('No more tests left. Exiting.');
-    process.exit(0);
+    console.log('No more tests left. Exiting in a sec.');
+    this.setClientState({ running: false });
+    setTimeout(() => process.exit(0), 3000);
   };
 
-  execute = async ({ splitIndex, splitInto, tests, rerun, numThreads }) => {
+  execute = async ({
+    splitIndex,
+    splitInto,
+    tests,
+    rerun,
+    retries,
+    numThreads,
+  }) => {
     let newResults;
     await rootLock.waitForLock(async () => {
-      console.log('executing tests', tests);
       const tyrant = this.getTyrant(
         {
           splitIndex,
           splitInto,
           rerun,
-          retries: 3,
+          retries,
           run: true,
           noExit: true,
           progress: true,
@@ -179,30 +181,18 @@ export default class SlaveRunner {
             this._onTyrantEvent(...args);
           }
         })
-        .on(Events.STARTED_EXECUTION, () =>
-          this.setClientState({
-            running: true,
-            eventTrigger: 'STARTED_EXECUTION',
-          })
-        )
+        .on(Events.STARTED_EXECUTION, () => {})
         .on(Events.STARTED_RUNNING, ({ numTests }) =>
           this.setClientState({ completed: 0, numTests })
         )
         .on(Events.TICK, data => {
-          const { minutes, test: { isFix, isRegression, isNew } } = data;
-          if (isFix || isRegression || isNew) {
-            this._onTyrantEvent(Events.TICK, data);
-          }
-          this.setClientState({
-            completed: this.clientState.completed + 1,
-            minutes,
-          });
+          //const { minutes, test: { isFix, isRegression, isNew } } = data;
+          //          if (isFix || isRegression || isNew) {
+          this._onTyrantEvent(Events.TICK, data);
+          //          }
         })
         .on(Events.FINISHED_EXECUTION, () => {
-          this.setClientState({
-            running: false,
-            eventTrigger: 'FINISHED_EXECUTION',
-          });
+          tyrant.removeAllListeners();
         })
         .on(Events.RERUNNING_TESTS, ({ files, retriesLeft }) => {
           this._onTyrantEvent(Events.RERUNNING_TESTS, {

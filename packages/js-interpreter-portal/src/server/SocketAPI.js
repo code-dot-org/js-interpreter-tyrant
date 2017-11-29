@@ -28,11 +28,7 @@ export default class SocketAPI {
     this.app.get('/gitzips/:sha', this.handleGitZipRequest);
 
     this.io.on('connection', this.onConnection);
-
-    if (!this.slaveManager.heroku) {
-      // running locally. Go ahead and start up a slave
-      this.slaveManager.setConfig({ numSlaves: 0 });
-    }
+    this.versionManager.update();
   }
 
   handleGitZipRequest = async (req, res) => {

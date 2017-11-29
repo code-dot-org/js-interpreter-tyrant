@@ -12,16 +12,13 @@ import {
   Card,
   TextField,
   Typography,
-  Paper,
   CircularProgress,
 } from 'material-ui';
 import { withTheme } from 'material-ui/styles';
-import { grey } from 'material-ui/colors';
 
 import MainCard from './MainCard';
 import Connection from '../client/Connection';
 import TyrantEventQueue, { Events } from '../client/TyrantEventQueue';
-import LogOutput from './LogOutput';
 import TestResultsTable from './TestResultsTable';
 import NumberDropdown from './NumberDropdown';
 import { shortTestName, fullTestName } from '../util';
@@ -33,10 +30,12 @@ class GlobInput extends Component {
     numThreads: 8,
   };
 
-  static propsTypes = {
+  static propTypes = {
     onClickRun: PropTypes.func.isRequired,
     onClickKill: PropTypes.func.isRequired,
-    slaveState: PropTypes.object.isRequired,
+    masterState: PropTypes.shape({
+      running: PropTypes.bool.isRequired,
+    }).isRequired,
   };
 
   render() {
@@ -75,7 +74,7 @@ class GlobInput extends Component {
           <Button
             color="primary"
             raised
-            disabled={this.props.slaveState.running > 0}
+            disabled={this.props.masterState.running}
             onClick={() =>
               this.props.onClickRun({
                 numThreads: this.state.numThreads,
@@ -91,7 +90,7 @@ class GlobInput extends Component {
           </Button>
           <Button
             raised
-            disabled={this.props.slaveState.running === 0}
+            disabled={!this.props.masterState.running}
             onClick={this.props.onClickKill}
           >
             Stop
@@ -104,11 +103,14 @@ class GlobInput extends Component {
 
 @withTheme
 export default class RunCard extends Component {
-  static propTypes = {};
+  static propTypes = {
+    theme: PropTypes.object.isRequired,
+  };
 
   state = {
     slaves: {},
     masterState: {},
+    results: [],
     savedResults: null,
     tab: 'new-results',
     testGlob: '',
@@ -176,12 +178,16 @@ export default class RunCard extends Component {
     Connection.SlaveRunner.onClientStateChange(newState =>
       this.setSlaveState(newState.slaveId, newState)
     );
-    const state = await Connection.SlaveManager.getClientState();
 
     const slaveStates = await Connection.MasterRunner.getSlaveStates();
     slaveStates.forEach(({ result: state, slaveId }) => {
       this.setSlaveState(slaveId, state);
     });
+
+    setInterval(async () => {
+      const results = await Connection.MasterRunner.getResults();
+      this.setState({ results });
+    }, 1000);
   }
 
   onClickLoadSavedResults = async () => {
@@ -234,19 +240,9 @@ export default class RunCard extends Component {
 
   getAggregateSlaveState() {
     const state = {
-      numTests: 1,
-      completed: 0,
-      results: [],
       running: 0,
-      minutes: 0,
     };
     Object.values(this.state.slaves).forEach(slave => {
-      state.numTests += slave.numTests || 1;
-      state.completed += slave.completed || 0;
-      state.minutes = Math.max(state.minutes, slave.minutes || 0);
-      if (slave.results) {
-        state.results = state.results.concat(slave.results);
-      }
       if (slave.running) {
         state.running += 1;
       }
@@ -257,25 +253,27 @@ export default class RunCard extends Component {
   changeTab = (event, tab) => this.setState({ tab });
 
   render() {
-    const state = this.getAggregateSlaveState();
+    const { masterState } = this.state;
     const progress =
-      state.numTests > 0 ? state.completed / state.numTests * 100 : null;
-    const hasResults = state.results && state.results.length > 0;
-    const hasChangedResults = state.results.reduce(
+      masterState.numTests > 0
+        ? masterState.numTestsCompleted / masterState.numTests * 100
+        : null;
+
+    const hasChangedResults = this.state.results.reduce(
       (found, test) => found || test.isFix || test.isRegression || test.isNew,
       false
     );
-    const numRegressions = state.results.reduce(
+    const numRegressions = this.state.results.reduce(
       (num, test) => num + (test.isRegression ? 1 : 0),
       0
     );
-    const timeRemaining = moment.duration({ minutes: state.minutes });
+    const timeRemaining = moment.duration({ minutes: masterState.minutesLeft });
     return (
       <MainCard>
         <CardHeader title="Test Results" />
         <CardContent>
           <GlobInput
-            slaveState={state}
+            masterState={masterState}
             onClickRun={this.onClickRun}
             onClickKill={this.onClickKill}
           />
@@ -312,26 +310,25 @@ export default class RunCard extends Component {
             {this.state.tab === 'new-results' && (
               <div>
                 <CardContent>
-                  {state.results.length === 0 &&
-                    state.running <= 0 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <Typography type="body1">
-                          Run tests to see new results or...
-                        </Typography>
-                        {this.state.loadingNewResults && (
-                          <CircularProgress size={24} />
-                        )}
-                        <Button
-                          raised
-                          color="primary"
-                          onClick={this.onClickLoadNewResults}
-                          disabled={this.state.loadingNewResults}
-                        >
-                          Load New Results
-                        </Button>
-                      </div>
-                    )}
-                  {state.running > 0 && (
+                  {!masterState.running && (
+                    <div style={{ textAlign: 'center' }}>
+                      <Typography type="body1">
+                        Run tests to see new results or...
+                      </Typography>
+                      {this.state.loadingNewResults && (
+                        <CircularProgress size={24} />
+                      )}
+                      <Button
+                        raised
+                        color="primary"
+                        onClick={this.onClickLoadNewResults}
+                        disabled={this.state.loadingNewResults}
+                      >
+                        Load New Results
+                      </Button>
+                    </div>
+                  )}
+                  {masterState.running && (
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       <div style={{ flexBasis: '100%' }}>
                         <LinearProgress
@@ -346,29 +343,30 @@ export default class RunCard extends Component {
                             color: this.props.theme.palette.secondary[700],
                           }}
                         >
-                          {state.completed}
+                          {masterState.numTestsCompleted}
                         </span>
                         <span
                           style={{
                             color: this.props.theme.palette.secondary[400],
                           }}
                         >
-                          /{state.numTests}
+                          /{masterState.numTests}
                         </span>
                         <Typography color="accent" type="caption">
-                          {timeRemaining.humanize()} left
+                          {timeRemaining
+                            ? timeRemaining.humanize() + ' left'
+                            : '--'}
                         </Typography>
                         <Typography color="accent" type="caption">
-                          {state.running} slave{state.running !== 1 && 's'}{' '}
-                          running
+                          {this.getAggregateSlaveState().running} slaves
                         </Typography>
                       </div>
                     </div>
                   )}
                 </CardContent>
-                {state.results.length > 0 && (
+                {this.state.results.length > 0 && (
                   <TestResultsTable
-                    results={state.results}
+                    results={this.state.results}
                     onClickRun={this.onClickRerunTests}
                   />
                 )}
@@ -376,7 +374,7 @@ export default class RunCard extends Component {
                   <Button
                     color="primary"
                     raised
-                    disabled={numRegressions === 0 || state.running > 0}
+                    disabled={numRegressions === 0 || masterState.running}
                     onClick={this.onClickRerunRegressedTests}
                   >
                     Rerun {numRegressions} Tests
@@ -384,8 +382,8 @@ export default class RunCard extends Component {
 
                   <Button
                     disabled={
-                      state.results.length === 0 ||
-                      state.running > 0 ||
+                      this.state.results.length === 0 ||
+                      masterState.running ||
                       !hasChangedResults
                     }
                     color="primary"

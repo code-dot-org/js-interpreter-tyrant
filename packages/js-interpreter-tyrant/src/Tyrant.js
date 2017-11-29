@@ -567,7 +567,7 @@ export default class Tyrant extends EventEmitter {
               fs.closeSync(verboseOutputFile);
             }
           };
-          process.on('SIGINT', () => {
+          const onSigInt = () => {
             if (running) {
               this.log(
                 chalk.bold(
@@ -580,7 +580,8 @@ export default class Tyrant extends EventEmitter {
             }
             this.processTestResults();
             process.exit(1);
-          });
+          };
+          process.on('SIGINT', onSigInt);
           this.emit(Events.STARTED_RUNNING, { numTests: paths.length * 2 });
           runner.run({
             compiledFilesDir:
@@ -605,6 +606,7 @@ export default class Tyrant extends EventEmitter {
                 }
                 running = false;
                 this.log(`${'\n'}finished running ${count} tests`);
+                process.removeListener('SIGINT', onSigInt);
                 resolve(bar.curr);
               });
               let numRegressed = 0;
