@@ -3,7 +3,6 @@ import fs from 'fs';
 import Git, {
   Tag,
   Repository,
-  Reference,
   Checkout,
   Remote,
   Merge,
@@ -23,26 +22,32 @@ export const rootLock = new Lock('git-root-lock');
 
 export const REPO_ROOT = '/tmp/js-interpreter-repos';
 const exec = promisify(ChildProcess.exec);
+const spawn = promisify(ChildProcess.spawn);
 const rmdir = promisify(rimraf);
 export const Repos = {
   CODE_DOT_ORG: {
-    gitUrl: 'https://github.com/code-dot-org/JS-Interpreter.git',
+    gitUrl: `https://${process.env.GITHUB_USERNAME}:${
+      process.env.GITHUB_PASSWORD
+    }@github.com/code-dot-org/JS-Interpreter.git`,
     name: 'origin',
+    githubUrl: `https://github.com/code-dot-org/JS-Interpreter`,
   },
   NeilFraser: {
-    gitUrl: 'https://github.com/NeilFraser/JS-Interpreter.git',
+    gitUrl: `https://github.com/NeilFraser/JS-Interpreter.git`,
     name: 'NeilFraser',
+    githubUrl: `https://github.com/NeilFraser/JS-Interpreter`,
   },
 };
 
-function commitToJSON(commit, upstreamName = Repos.CODE_DOT_ORG.name) {
+function commitToJSON(commit, repoConfig = Repos.CODE_DOT_ORG) {
   return {
     sha: commit.sha(),
     summary: commit.summary(),
     time: commit.timeMs(),
     author: commit.author().toString(),
     committer: commit.committer().toString(),
-    upstreamName,
+    upstreamName: repoConfig.name,
+    githubUrl: repoConfig.githubUrl + `/commit/${commit.sha()}`,
   };
 }
 
@@ -128,7 +133,7 @@ export default class MasterVersionManager {
     this.log('done');
   };
 
-  getCommitLog = async (upstreamName, head) => {
+  getCommitLog = async (repoConfig, head) => {
     if (!head) {
       head = await this.repo.getMasterCommit();
     }
@@ -137,7 +142,7 @@ export default class MasterVersionManager {
       // History emits "commit" event for each commit in the branch's history
       const commits = [];
       history.on('commit', commit => {
-        commits.push(commitToJSON(commit, upstreamName));
+        commits.push(commitToJSON(commit, repoConfig));
       });
       history.on('end', () => resolve(commits));
       history.on('error', reject);
@@ -160,22 +165,20 @@ export default class MasterVersionManager {
     return Signature.now('Tyrant', 'paul@code.org');
   }
 
-  async commitFile(filePath, commitMessage) {
-    const index = await this.repo.refreshIndex();
-    await index.addByPath(filePath);
-    await index.write();
-    const oid = await index.writeTree();
-    const parent = await this.repo.getMasterCommit();
-    const author = this.getSignature();
-    const committer = this.getSignature();
-    return await this.repo.createCommit(
-      'HEAD',
-      author,
-      committer,
-      commitMessage,
-      oid,
-      [parent]
-    );
+  async commitFile(filePath, commitMessages) {
+    const msgs = [];
+    commitMessages.forEach(msg => {
+      msgs.push('-m');
+      msgs.push(msg);
+    });
+    await this.spawn('git', [
+      'commit',
+      ...msgs,
+      '--author="Tyrant <paul@carduner.net>"',
+      '--',
+      filePath,
+    ]);
+    this.update({ items: ['commits'] });
   }
 
   async getVersions() {
@@ -193,18 +196,21 @@ export default class MasterVersionManager {
     return newVersions;
   }
 
-  pushUpstream = async () => {
-    const remote = await this.repo.getRemote(Repos.CODE_DOT_ORG.name);
-    this.log(`pushing master to ${remote.url()}`);
-    await remote.push(['refs/heads/master:refs/heads/master'], {
-      callbacks: {
-        credentials: () =>
-          Cred.userpassPlaintextNew(
-            process.env.GITHUB_USERNAME,
-            process.env.GITHUB_PASSWORD
-          ),
-      },
+  spawn = async (cmd, args) => {
+    return await spawn(cmd, args, {
+      cwd: this.getLocalRepoPath(this.repoConfig),
+      stdio: 'inherit',
     });
+  };
+
+  pushUpstream = async () => {
+    this.log(`pushing master to ${Repos.CODE_DOT_ORG.gitUrl}`);
+    await this.spawn(`git`, [
+      'push',
+      '--force',
+      Repos.CODE_DOT_ORG.gitUrl,
+      'refs/heads/master:refs/heads/tyrant-changes',
+    ]);
     this.log('finished pushing to master');
     await this.update();
     await this.mergeUpstreamMaster();
@@ -220,7 +226,7 @@ export default class MasterVersionManager {
     if (this.clientState.updating) {
       return this.clientState;
     }
-    options = options || {};
+    options = { items: ['all'], reset: false, ...options };
     const { reset } = options;
     this.log('Updating interpreter versions');
     this.setClientState({ updating: true });
@@ -228,44 +234,56 @@ export default class MasterVersionManager {
     await rootLock.waitForLock(async () => {
       const localPath = this.getLocalRepoPath(this.repoConfig);
       if (!reset && fs.existsSync(localPath)) {
-        this.repo = await Repository.open(localPath);
+        try {
+          this.repo = await Repository.open(localPath);
+        } catch (e) {
+          // well the repo must be screwed up...
+          await this.cloneRepo();
+        }
       } else {
         await this.cloneRepo();
       }
-      const versions = await this.getVersions();
       let head = await this.repo.getHeadCommit();
       if (!head) {
         console.log("well this repo got screwed up... let's re-clone it!");
         await this.cloneRepo();
         head = await this.repo.getHeadCommit();
       }
-      await this.ensureRemotes();
-      this.log('reading commit history');
-      let commits = await this.getCommitLog(Repos.CODE_DOT_ORG.name);
-      const commitsBySha = {};
-      commits.forEach(commit => (commitsBySha[commit.sha] = commit));
-      let upstream = await this.getCommitLog(
-        Repos.NeilFraser.name,
-        await this.repo.getReferenceCommit(
-          `refs/remotes/${Repos.NeilFraser.name}/master`
-        )
-      );
-      commits = commits.map(commit => ({ version: commit.summary, commit }));
-      for (let i = 0; i < upstream.length; i++) {
-        let upstreamCommit = upstream[i];
-        let originCommit = commitsBySha[upstreamCommit.sha];
-        upstreamCommit.merged = !!originCommit;
-        upstream[i] = {
-          version: upstreamCommit.summary,
-          commit: upstreamCommit,
-        };
+      if (options.items.includes('all') || options.items.includes('tags')) {
+        this.setClientState({ versions: await this.getVersions() });
       }
-      const currentVersion = commitToJSON(head);
+      if (options.items.includes('all') || options.items.includes('remotes')) {
+        await this.ensureRemotes();
+      }
+      if (options.items.includes('all') || options.items.includes('commits')) {
+        this.log('reading commit history');
+        let commits = await this.getCommitLog(Repos.CODE_DOT_ORG);
+        const commitsBySha = {};
+        commits.forEach(commit => (commitsBySha[commit.sha] = commit));
+        let upstream = await this.getCommitLog(
+          Repos.NeilFraser,
+          await this.repo.getReferenceCommit(
+            `refs/remotes/${Repos.NeilFraser.name}/master`
+          )
+        );
+        commits = commits.map(commit => ({ version: commit.summary, commit }));
+        for (let i = 0; i < upstream.length; i++) {
+          let upstreamCommit = upstream[i];
+          let originCommit = commitsBySha[upstreamCommit.sha];
+          upstreamCommit.merged = !!originCommit;
+          upstream[i] = {
+            version: upstreamCommit.summary,
+            commit: upstreamCommit,
+          };
+        }
+        const currentVersion = commitToJSON(head);
+        this.setClientState({
+          currentVersion,
+          commits,
+          upstream,
+        });
+      }
       this.setClientState({
-        currentVersion,
-        versions,
-        commits,
-        upstream,
         updating: false,
       });
       this.log('Everything is up to date!');
@@ -326,7 +344,7 @@ export default class MasterVersionManager {
           time: head.timeMs(),
         };
         this.setClientState({ currentVersion });
-        this.update();
+        this.update({ items: ['commits'] });
       }
     });
   };
@@ -339,60 +357,3 @@ export default class MasterVersionManager {
     return path.resolve(...args);
   }
 }
-
-//import RPCInterface from './RPCInterface';
-//import SlaveVersionManager from '../slave/SlaveVersionManager';
-//
-//@RPCInterface({ type: 'master' })
-//export default class MasterVersionManager {
-//  static SlaveClass = SlaveVersionManager;
-//
-//  clientState = {
-//    operationLog: [],
-//  };
-//
-//  logOperation(opType, ...args) {
-//    this.setClientState({
-//      operationLog: [...this.clientState.operationLog, { opType, args }],
-//    });
-//  }
-//
-//  getSlaveStates = async () => {
-//    const states = await this.slaveManager.emitToAllSlaves(
-//      'SlaveVersionManager.getClientState'
-//    );
-//    let slaveStates = {};
-//    states.forEach(({ slaveId, result }) => {
-//      slaveStates[slaveId] = result;
-//    });
-//    return slaveStates;
-//  };
-//
-//  update = async () => {
-//    this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
-//    this.logOperation('update');
-//  };
-//
-//  selectVersion = async version => {
-//    this.slaveManager.emitToAllSlaves(
-//      'SlaveVersionManager.selectVersion',
-//      version
-//    );
-//    this.logOperation('selectVersion', version);
-//  };
-//
-//  mergeCommit = async sha => {
-//    this.slaveManager.emitToAllSlaves('SlaveVersionManager.mergeCommit', sha);
-//    this.logOperation('mergeCommit', sha);
-//  };
-//
-//  pushUpstream = async () => {
-//    await this.slaveManager.emitToPrimarySlave(
-//      'SlaveVersionManager.pushUpstream'
-//    );
-//    await this.slaveManager.emitToAllSlaves('SlaveVersionManager.update');
-//    await this.slaveManager.emitToAllSlaves(
-//      'SlaveVersionManager.mergeUpstreamMaster'
-//    );
-//  };
-//}

@@ -92,7 +92,7 @@ class CommitList extends Component {
                   author,
                   committer,
                   merged,
-                  upstreamName,
+                  githubUrl,
                 },
               }) => (
                 <ListItem key={sha} divider>
@@ -100,12 +100,7 @@ class CommitList extends Component {
                     <Grid item xs={sha === current ? 12 : 8}>
                       <div>
                         {sha === current && <strong>(current)</strong>}{' '}
-                        <a
-                          href={`https://github.com/${
-                            upstreamName
-                          }/JS-Interpreter/commit/${sha}`}
-                          target="_blank"
-                        >
+                        <a href={githubUrl} target="_blank">
                           {sha.slice(0, 6)}
                         </a>{' '}
                         {version}
@@ -213,8 +208,6 @@ export default class VersionSwitcher extends Component {
     this.setMasterState(
       await Connection.MasterVersionManager.getClientState(this.setMasterState)
     );
-
-    Connection.MasterVersionManager.update();
   }
 
   selectVersion = sha => {
@@ -235,6 +228,10 @@ export default class VersionSwitcher extends Component {
 
   onClickReset = () => {
     Connection.MasterVersionManager.update({ reset: true });
+  };
+
+  onClickUpdate = () => {
+    Connection.MasterVersionManager.update();
   };
 
   render() {
@@ -277,6 +274,9 @@ export default class VersionSwitcher extends Component {
               </Button>
               <Button raised color="primary" onClick={this.onClickReset}>
                 Reset
+              </Button>
+              <Button raised color="accent" onClick={this.onClickUpdate}>
+                Update
               </Button>
             </CardActions>
           </Card>
