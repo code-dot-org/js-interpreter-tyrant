@@ -24,7 +24,7 @@ export default class SlaveManager {
     console.log('Starting slave', id);
     this.childProcesses[id] = child_process.spawn(
       'yarn',
-      ['run', 'startSlave'],
+      ['run', 'startSlave:prod'],
       {
         env: {
           ...process.env,

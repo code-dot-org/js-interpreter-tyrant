@@ -12,8 +12,9 @@
     "build:server": "BABEL_ENV=server babel src -d ./es5/src",
     "build:clean": "rm -rf ./build",
     "start": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --exclude src/components --exclude src/pages -- src/server/run",
-    "start:prod": "NODE_ENV=production node es5/src/server",
-    "startSlave": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --inspect --exclude src/components -- src/slave/run-integration-server",
+    "start:prod": "NODE_ENV=production node es5/src/server/run",
+    "startSlave": "BABEL_ENV=server NODE_ENV=development babel-watch --trace-warnings --exclude src/components -- src/slave/run-integration-server",
+    "startSlave:prod": "NODE_ENV=production node --trace-warnings es5/src/slave/run-integration-server",
     "lint": "eslint src"
   },
   "engines": {

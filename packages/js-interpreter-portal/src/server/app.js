@@ -1,29 +1,12 @@
-import fs from 'fs';
-import path from 'path';
 import React from 'react';
-import {renderToString} from 'react-dom/server';
-import {ServerStyleSheet} from 'styled-components';
-import {StaticRouter} from 'react-router';
+import { renderToString } from 'react-dom/server';
+import { ServerStyleSheet } from 'styled-components';
+import { StaticRouter } from 'react-router';
 import Helmet from 'react-helmet';
 
 import AppWrapper from '../AppWrapper';
 
 const ENABLE_SERVER_SIDE_RENDERING = false;
-
-let manifest;
-function getAssetPath(name) {
-  if (process.env.NODE_ENV === 'production') {
-    if (!manifest) {
-      manifest = JSON.parse(
-        fs.readFileSync(
-          path.resolve(process.cwd(), 'build/asset-manifest.json')
-        )
-      );
-    }
-    name = manifest[name];
-  }
-  return `/${name}`;
-}
 
 export default async (req, res) => {
   const context = {};
@@ -95,7 +78,7 @@ export default async (req, res) => {
     <div
       id="app"
     >${main}</div>
-    <script src="${getAssetPath('main.js')}"></script>
+    <script src="/main.js"></script>
   </body>
 </html>
   `

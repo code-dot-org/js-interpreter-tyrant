@@ -38,6 +38,18 @@ class GlobInput extends Component {
     }).isRequired,
   };
 
+  componentDidMount() {
+    Connection.MasterRunner.onClientStateChange(state => this.setState(state));
+  }
+
+  update = key => e => {
+    if (this.state.running) {
+      Connection.MasterRunner.changeOptions({ [key]: e.target.value });
+    } else {
+      this.setState({ [key]: e.target.value });
+    }
+  };
+
   render() {
     return (
       <Card>
@@ -58,7 +70,7 @@ class GlobInput extends Component {
               count={40}
               id="num-slaves"
               value={this.state.numSlaves}
-              onChange={e => this.setState({ numSlaves: e.target.value })}
+              onChange={this.update('numSlaves')}
             />
             <NumberDropdown
               label="Num Threads"
@@ -66,7 +78,7 @@ class GlobInput extends Component {
               count={8}
               id="num-threads"
               value={this.state.numThreads}
-              onChange={e => this.setState({ numThreads: e.target.value })}
+              onChange={this.update('numThreads')}
             />
           </form>
         </CardContent>

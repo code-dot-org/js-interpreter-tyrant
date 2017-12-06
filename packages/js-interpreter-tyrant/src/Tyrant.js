@@ -151,9 +151,15 @@ export default class Tyrant extends EventEmitter {
       'test-results-new.verbose.json'
     );
     this.numTries = 1;
-    this.OLD_RESULTS_BY_KEY = this.argv.diff
-      ? this.getResultsByKey(this.getSavedResults())
-      : {};
+  }
+
+  getOldResultsByKey() {
+    if (!this.OLD_RESULTS_BY_KEY) {
+      this.OLD_RESULTS_BY_KEY = this.argv.diff
+        ? this.getResultsByKey(this.getSavedResults())
+        : {};
+    }
+    return this.OLD_RESULTS_BY_KEY;
   }
 
   getNewResults() {
@@ -407,7 +413,7 @@ export default class Tyrant extends EventEmitter {
   };
 
   getTestDiff = newTest => {
-    const oldTest = this.OLD_RESULTS_BY_KEY[this.getKeyForTest(newTest)];
+    const oldTest = this.getOldResultsByKey()[this.getKeyForTest(newTest)];
     return {
       isRegression: oldTest && oldTest.result.pass && !newTest.result.pass,
       isFix: oldTest && !oldTest.result.pass && newTest.result.pass,
@@ -430,7 +436,7 @@ export default class Tyrant extends EventEmitter {
         numNew[type] = 0;
       }
       total[type]++;
-      const oldTest = this.OLD_RESULTS_BY_KEY[this.getKeyForTest(newTest)];
+      const oldTest = this.getOldResultsByKey()[this.getKeyForTest(newTest)];
       let diffList = testsThatDiffer.other;
       const testDiff = this.getTestDiff(newTest);
       if (testDiff.isRegression) {
@@ -607,6 +613,7 @@ export default class Tyrant extends EventEmitter {
                 running = false;
                 this.log(`${'\n'}finished running ${count} tests`);
                 process.removeListener('SIGINT', onSigInt);
+                results.removeAllListeners();
                 resolve(bar.curr);
               });
               let numRegressed = 0;
@@ -720,7 +727,7 @@ export default class Tyrant extends EventEmitter {
   saveResults = results => {
     this.log('Saving results for future comparison...');
     const allResults = {
-      ...this.OLD_RESULTS_BY_KEY,
+      ...this.getOldResultsByKey(),
       ...this.getResultsByKey(results),
     };
     results = Object.values(allResults).map(test => ({

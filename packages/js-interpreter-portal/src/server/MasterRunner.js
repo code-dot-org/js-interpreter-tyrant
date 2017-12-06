@@ -18,6 +18,9 @@ export default class MasterRunner {
     numTestsInQueue: 0,
     numTestsInProgress: 0,
     numTestsCompleted: 0,
+    numSlaves: 1,
+    numThreads: 1,
+    numTestsPerRun: 50,
   };
 
   constructor(io, slaveManager, versionManager) {
@@ -93,7 +96,10 @@ export default class MasterRunner {
   getNextTests = async () => {
     const tests = [];
     if (this.testQueue.length > 0) {
-      while (tests.length < 10 && this.testQueue.length > 0) {
+      while (
+        tests.length < this.clientState.numTestsPerRun &&
+        this.testQueue.length > 0
+      ) {
         const nextTest = this.testQueue.pop();
         this.testsInProgress.push({ file: nextTest });
         tests.push(nextTest);
@@ -102,7 +108,8 @@ export default class MasterRunner {
       // we're done, start giving more slaves a chance at these last tests.
       for (
         let i = 0;
-        tests.length < 10 && i < this.testsInProgress.length;
+        tests.length < this.clientState.numTestsPerRun &&
+        i < this.testsInProgress.length;
         i++
       ) {
         const nextTest = this.testsInProgress[i];
@@ -147,6 +154,22 @@ export default class MasterRunner {
     return this.testsCompleted.filter(
       test => test.isFix || test.isNew || test.isRegression
     );
+  };
+
+  changeOptions = async ({ numSlaves, numThreads, numTestsPerRun }) => {
+    if (numSlaves !== undefined) {
+      const currentNumSlaves = this.clientState.numSlaves;
+      for (let i = currentNumSlaves; i < numSlaves; i++) {
+        this.slaveManager.runWorker(i);
+      }
+      this.setClientState({ numSlaves });
+    }
+    if (numThreads !== undefined) {
+      this.setClientState({ numThreads });
+    }
+    if (numTestsPerRun !== undefined) {
+      this.setClientState({ numTestsPerRun });
+    }
   };
 
   execute = async ({ tests, numThreads, numSlaves, sha, rerun }) => {

@@ -7,3 +7,4 @@ yarn run build
 yarn link
 cd ../js-interpreter-portal
 yarn link @code-dot-org/js-interpreter-tyrant
+yarn run build:server

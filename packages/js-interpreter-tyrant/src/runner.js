@@ -70,7 +70,7 @@ module.exports = {
     argv.reporter(resultEmitter);
 
     function pathToTestFile(path) {
-      return {file: path, contents: fs.readFileSync(path, 'utf-8')};
+      return { file: path, contents: fs.readFileSync(path, 'utf-8') };
     }
 
     const endFrontmatterRe = /---\*\/\r?\n/g;
