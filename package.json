@@ -13,6 +13,6 @@
   "scripts": {
     "postinstall": "./postinstall.sh",
     "start": "cd packages/js-interpreter-portal && yarn start",
-    "startSlave": "cd packages/js-interpreter-portal && yarn startSlave"
+    "startSlave": "cd packages/js-interpreter-portal && yarn startSlave:prod"
   }
 }
