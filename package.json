@@ -14,9 +14,5 @@
     "postinstall": "./postinstall.sh",
     "start": "cd packages/js-interpreter-portal && yarn start",
     "startSlave": "cd packages/js-interpreter-portal && yarn startSlave"
-  },
-  "cacheDirectories": [
-    "packages/js-interpreter-portal/node_modules",
-    "packages/js-interpreter-tyrant/node_modules"
-  ]
+  }
 }
