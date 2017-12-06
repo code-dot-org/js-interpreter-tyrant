@@ -100,9 +100,12 @@ export default class SlaveManager {
   }
 
   async emitToSlave(slave, event, ...args) {
-    return await new Promise(resolve =>
-      this.getSocketFor(slave).emit(event, ...args, resolve)
-    );
+    return await new Promise(resolve => {
+      const socket = this.getSocketFor(slave);
+      if (socket) {
+        socket.emit(event, ...args, resolve)
+      }
+    });
   }
 
   async emitToAllSlaves(event, ...args) {

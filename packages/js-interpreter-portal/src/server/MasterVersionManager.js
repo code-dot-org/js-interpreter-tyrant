@@ -321,38 +321,16 @@ export default class MasterVersionManager {
 
   mergeCommit = async sha => {
     await rootLock.waitForLock(async () => {
-      const commitToMerge = await this.repo.getCommit(sha);
-      if (!commitToMerge) {
-        throw new Error('Attempting to merge non-existent commit', sha);
-      }
-      const master = await this.repo.getMasterCommit();
-      const index = await Merge.commits(this.repo, master, commitToMerge);
-      if (index.hasConflict) {
-        this.log('Unable to merge. Found conflict.');
-      } else {
-        const oid = await index.writeTreeTo(this.repo);
-        const masterBranch = await this.repo.getBranch('master');
-        const commitId = await this.repo.createCommit(
-          masterBranch.name(),
-          Signature.now('Tyrant', 'paul@code.org'),
-          Signature.now('Tyrant', 'paul@code.org'),
-          `Merge upstream commit ${sha} into master`,
-          oid,
-          [master, commitToMerge]
-        );
-        this.log(`Successfully merged commit ${commitId}`);
-        const head = await this.repo.getMasterCommit();
-        await Checkout.tree(this.repo, head, {
-          checkoutStrategy: Checkout.STRATEGY.FORCE,
-        });
-        const currentVersion = {
-          sha: head.sha(),
-          summary: head.summary(),
-          time: head.timeMs(),
-        };
-        this.setClientState({ currentVersion });
-        this.update({ items: ['commits'] });
-      }
+      await this.spawn(`git`, ['merge', sha]);
+      this.log(`Successfully merged commit ${sha}`);
+      const head = await this.repo.getMasterCommit();
+      const currentVersion = {
+        sha: head.sha(),
+        summary: head.summary(),
+        time: head.timeMs(),
+      };
+      this.setClientState({ currentVersion });
+      this.update({ items: ['commits'] });
     });
   };
 
