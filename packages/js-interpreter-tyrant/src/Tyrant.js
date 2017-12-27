@@ -94,6 +94,8 @@ const ARGS = yargs
   .default('t', os.cpus().length)
   .describe('progress', 'display a progress bar')
   .boolean('progress')
+  .describe('timeout', 'How long to wait before failing a test')
+  .default('timeout', 6000)
   .alias('v', 'verbose')
   .boolean('v')
   .describe(
@@ -593,7 +595,7 @@ export default class Tyrant extends EventEmitter {
             compiledFilesDir:
               this.argv.compiledOut && path.resolve(this.argv.compiledOut),
             threads: this.argv.threads,
-            timeout: 60000,
+            timeout: this.argv.timeout,
             hostType: 'js-interpreter',
             hostPath:
               this.argv.hostPath ||
