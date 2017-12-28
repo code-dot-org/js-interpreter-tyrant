@@ -555,6 +555,10 @@ export default class Tyrant extends EventEmitter {
 
           let count = 1;
           const outputFile = fs.openSync(outputFilePath, 'w');
+          const outputXMLFile = fs.openSync(
+            outputFilePath.replace('json', 'xml'),
+            'w'
+          );
           let verboseOutputFile;
           if (this.argv.verbose) {
             verboseOutputFile = fs.openSync(verboseOutputFilePath, 'w');
@@ -562,6 +566,12 @@ export default class Tyrant extends EventEmitter {
           let startTime;
           let running = false;
           fs.appendFileSync(outputFile, '[\n');
+          fs.appendFileSync(
+            outputXMLFile,
+            `<?xml version="1.0" ?>
+<testsuites>
+    <testsuite errors="0" failures="0" name="my test suite" tests="1">`
+          );
           if (verboseOutputFile) {
             fs.appendFileSync(verboseOutputFile, '[\n');
           }
@@ -569,7 +579,14 @@ export default class Tyrant extends EventEmitter {
 
           const finishWritingOutput = () => {
             fs.appendFileSync(outputFile, ']\n');
+            fs.appendFileSync(
+              outputXMLFile,
+              `
+    </testsuite>
+</testsuites>`
+            );
             fs.closeSync(outputFile);
+            fs.closeSync(outputXMLFile);
             if (verboseOutputFile) {
               fs.appendFileSync(verboseOutputFile, ']\n');
               fs.closeSync(verboseOutputFile);
@@ -605,8 +622,13 @@ export default class Tyrant extends EventEmitter {
               : undefined,
             test262Dir: path.resolve(this.argv.root, 'test262'),
             reporter: results => {
+              let numRegressed = 0;
+              let numFixed = 0;
+              let numNew = 0;
+              let lastTimestamp = new Date().getTime();
               results.on('start', () => {
                 startTime = new Date().getTime();
+                lastTimestamp = startTime;
               });
               results.on('end', () => {
                 if (running) {
@@ -618,9 +640,6 @@ export default class Tyrant extends EventEmitter {
                 results.removeAllListeners();
                 resolve(bar.curr);
               });
-              let numRegressed = 0;
-              let numFixed = 0;
-              let numNew = 0;
               results.on('test end', test => {
                 test.file = fs
                   .realpathSync(test.file)
@@ -675,6 +694,36 @@ export default class Tyrant extends EventEmitter {
                     null,
                     2
                   ) + '\n'
+                );
+                const decodeHTML = function(xml) {
+                  return xml
+                    ? xml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;')
+                    : '';
+                };
+                let dt = new Date().getTime() - lastTimestamp;
+                lastTimestamp = new Date().getTime();
+                let failure = test.result.pass
+                  ? ''
+                  : `<failure>${decodeHTML(test.result.message)}</failure>`;
+                fs.appendFileSync(
+                  outputXMLFile,
+                  `
+        <testcase classname="${test.file}" name="${decodeHTML(
+                    test.attrs.description
+                  )}" time="${dt / 1000}">
+            <system-out>
+                ${test.result.pass ? decodeHTML(test.result.message) : ''}
+            </system-out>
+            <system-err>
+                ${test.result.pass ? '' : decodeHTML(test.result.message)}
+            </system-err>
+            ${failure}
+        </testcase>`
                 );
                 if (verboseOutputFile) {
                   fs.appendFileSync(
