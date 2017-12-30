@@ -717,12 +717,15 @@ export default class Tyrant extends EventEmitter {
                   xmlObject[0].testcase.push({
                     'system-out': { _cdata: test.result.message },
                   });
-                } else {
+                } else if (testDiff && testDiff.isRegression) {
                   xmlObject[0].testcase.push({
                     failure: { _cdata: test.result.message },
                   });
+                } else {
+                  xmlObject[0].testcase.push({
+                    'system-err': { _cdata: test.result.message },
+                  });
                 }
-
                 fs.appendFileSync(
                   outputXMLFile,
                   XML(xmlObject, { indent: '  ' }) + '\n\n'
