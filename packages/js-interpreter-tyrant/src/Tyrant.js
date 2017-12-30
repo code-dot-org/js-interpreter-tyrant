@@ -8,6 +8,7 @@ import { execSync } from 'child_process';
 import chalk from 'chalk';
 import globber from 'test262-harness/lib/globber.js';
 import ProgressBar from 'progress';
+import XML from 'xml';
 import runner from './runner';
 import { Events } from './constants';
 
@@ -570,7 +571,9 @@ export default class Tyrant extends EventEmitter {
             outputXMLFile,
             `<?xml version="1.0" ?>
 <testsuites>
-    <testsuite errors="0" failures="0" name="my test suite" tests="1">`
+    <testsuite errors="0" failures="0" name="my test suite" tests="1">
+
+`
           );
           if (verboseOutputFile) {
             fs.appendFileSync(verboseOutputFile, '[\n');
@@ -695,35 +698,34 @@ export default class Tyrant extends EventEmitter {
                     2
                   ) + '\n'
                 );
-                const decodeHTML = function(xml) {
-                  return xml
-                    ? xml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&apos;')
-                    : '';
-                };
                 let dt = new Date().getTime() - lastTimestamp;
                 lastTimestamp = new Date().getTime();
-                let failure = test.result.pass
-                  ? ''
-                  : `<failure>${decodeHTML(test.result.message)}</failure>`;
+                const xmlObject = [
+                  {
+                    testcase: [
+                      {
+                        _attr: {
+                          classname: test.file,
+                          name: test.attrs.description.trim(),
+                          time: dt / 1000,
+                        },
+                      },
+                    ],
+                  },
+                ];
+                if (test.result.pass) {
+                  xmlObject[0].testcase.push({
+                    'system-out': { _cdata: test.result.message },
+                  });
+                } else {
+                  xmlObject[0].testcase.push({
+                    failure: { _cdata: test.result.message },
+                  });
+                }
+
                 fs.appendFileSync(
                   outputXMLFile,
-                  `
-        <testcase classname="${test.file}" name="${decodeHTML(
-                    test.attrs.description
-                  )}" time="${dt / 1000}">
-            <system-out>
-                ${test.result.pass ? decodeHTML(test.result.message) : ''}
-            </system-out>
-            <system-err>
-                ${test.result.pass ? '' : decodeHTML(test.result.message)}
-            </system-err>
-            ${failure}
-        </testcase>`
+                  XML(xmlObject, { indent: '  ' }) + '\n\n'
                 );
                 if (verboseOutputFile) {
                   fs.appendFileSync(
