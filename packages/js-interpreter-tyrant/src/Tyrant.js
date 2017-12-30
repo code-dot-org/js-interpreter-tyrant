@@ -706,7 +706,7 @@ export default class Tyrant extends EventEmitter {
                       {
                         _attr: {
                           classname: test.file,
-                          name: test.attrs.description.trim(),
+                          name: this.getKeyForTest(test),
                           time: dt / 1000,
                         },
                       },
