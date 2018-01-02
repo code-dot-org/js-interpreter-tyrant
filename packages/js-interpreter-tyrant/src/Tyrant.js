@@ -13,6 +13,7 @@ import runner from './runner';
 import { Events } from './constants';
 
 const TEST_TYPES = ['es5', 'es6', 'es', 'other'];
+const NOT_SAFE_IN_XML_1_0 = /[^\x09\x0A\x0D\x20-\xFF\x85\xA0-\uD7FF\uE000-\uFDCF\uFDE0-\uFFFD]/gm;
 
 const DEFAULT_TEST_GLOBS = [
   'test262/test/annexB/**/*.js',
@@ -713,17 +714,20 @@ export default class Tyrant extends EventEmitter {
                     ],
                   },
                 ];
+
+                const sanitize = s =>
+                  s ? s.replace(NOT_SAFE_IN_XML_1_0, '') : '';
                 if (test.result.pass) {
                   xmlObject[0].testcase.push({
-                    'system-out': { _cdata: test.result.message },
+                    'system-out': { _cdata: sanitize(test.result.message) },
                   });
                 } else if (testDiff && testDiff.isRegression) {
                   xmlObject[0].testcase.push({
-                    failure: { _cdata: test.result.message },
+                    failure: { _cdata: sanitize(test.result.message) },
                   });
                 } else {
                   xmlObject[0].testcase.push({
-                    'system-err': { _cdata: test.result.message },
+                    'system-err': { _cdata: sanitize(test.result.message) },
                   });
                 }
                 fs.appendFileSync(
