@@ -3252,14 +3252,7 @@ term-size@^1.2.0:
   dependencies:
     execa "^0.7.0"
 
-test262-compiler@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/test262-compiler/-/test262-compiler-2.0.0.tgz#d9c300c2a46616932e08a3b2fd03ade5bc1bcf11"
-  dependencies:
-    test262-parser "^2.0.7"
-    yargs "^4.7.1"
-
-"test262-compiler@github:pcardune/test262-compiler#ffa0dff":
+test262-compiler@^2.0.0, "test262-compiler@github:pcardune/test262-compiler#ffa0dff":
   version "2.0.1"
   resolved "https://codeload.github.com/pcardune/test262-compiler/tar.gz/ffa0dff"
   dependencies:
@@ -3534,8 +3527,8 @@ xtend@^4.0.0:
   resolved "https://registry.yarnpkg.com/xtend/-/xtend-4.0.1.tgz#a5c6d532be656e23db820efb943a1f04998d63af"
 
 y18n@^3.2.1:
-  version "3.2.1"
-  resolved "https://registry.yarnpkg.com/y18n/-/y18n-3.2.1.tgz#6d15fba884c08679c0d77e88e7759e811e07fa41"
+  version "3.2.2"
+  resolved "https://registry.yarnpkg.com/y18n/-/y18n-3.2.2.tgz#85c901bd6470ce71fc4bb723ad209b70f7f28696"
 
 yallist@^2.1.2:
   version "2.1.2"
