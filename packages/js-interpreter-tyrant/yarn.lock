@@ -3252,14 +3252,7 @@ term-size@^1.2.0:
   dependencies:
     execa "^0.7.0"
 
-test262-compiler@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/test262-compiler/-/test262-compiler-2.0.0.tgz#d9c300c2a46616932e08a3b2fd03ade5bc1bcf11"
-  dependencies:
-    test262-parser "^2.0.7"
-    yargs "^4.7.1"
-
-"test262-compiler@github:pcardune/test262-compiler#ffa0dff":
+test262-compiler@^2.0.0, "test262-compiler@github:pcardune/test262-compiler#ffa0dff":
   version "2.0.1"
   resolved "https://codeload.github.com/pcardune/test262-compiler/tar.gz/ffa0dff"
   dependencies:
@@ -3351,8 +3344,8 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
 
 ua-parser-js@^0.7.9:
-  version "0.7.14"
-  resolved "https://registry.yarnpkg.com/ua-parser-js/-/ua-parser-js-0.7.14.tgz#110d53fa4c3f326c121292bbeac904d2e03387ca"
+  version "0.7.28"
+  resolved "https://registry.yarnpkg.com/ua-parser-js/-/ua-parser-js-0.7.28.tgz#8ba04e653f35ce210239c64661685bf9121dec31"
 
 uid-number@^0.0.6:
   version "0.0.6"
