@@ -1848,8 +1848,8 @@ home-or-tmp@^2.0.0:
     os-tmpdir "^1.0.1"
 
 hosted-git-info@^2.1.4:
-  version "2.4.1"
-  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.4.1.tgz#4b0445e41c004a8bd1337773a4ff790ca40318c8"
+  version "2.8.9"
+  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.8.9.tgz#dffc0bf9a21c02209090f2aa69429e1414daf3f9"
 
 http-signature@~1.1.0:
   version "1.1.1"
@@ -3252,14 +3252,7 @@ term-size@^1.2.0:
   dependencies:
     execa "^0.7.0"
 
-test262-compiler@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/test262-compiler/-/test262-compiler-2.0.0.tgz#d9c300c2a46616932e08a3b2fd03ade5bc1bcf11"
-  dependencies:
-    test262-parser "^2.0.7"
-    yargs "^4.7.1"
-
-"test262-compiler@github:pcardune/test262-compiler#ffa0dff":
+test262-compiler@^2.0.0, "test262-compiler@github:pcardune/test262-compiler#ffa0dff":
   version "2.0.1"
   resolved "https://codeload.github.com/pcardune/test262-compiler/tar.gz/ffa0dff"
   dependencies:
