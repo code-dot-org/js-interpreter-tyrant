@@ -2630,8 +2630,8 @@ path-key@^2.0.0:
   resolved "https://registry.yarnpkg.com/path-key/-/path-key-2.0.1.tgz#411cadb574c5a140d3a4b1910d40d80cc9f40b40"
 
 path-parse@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.5.tgz#3c1adf871ea9cd6c9431b6ea2bd74a0ff055c4c1"
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.7.tgz#fbc114b60ca42b30d9daf5858e4bd68bbedb6735"
 
 path-type@^1.0.0:
   version "1.1.0"
@@ -3252,14 +3252,7 @@ term-size@^1.2.0:
   dependencies:
     execa "^0.7.0"
 
-test262-compiler@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/test262-compiler/-/test262-compiler-2.0.0.tgz#d9c300c2a46616932e08a3b2fd03ade5bc1bcf11"
-  dependencies:
-    test262-parser "^2.0.7"
-    yargs "^4.7.1"
-
-"test262-compiler@github:pcardune/test262-compiler#ffa0dff":
+test262-compiler@^2.0.0, "test262-compiler@github:pcardune/test262-compiler#ffa0dff":
   version "2.0.1"
   resolved "https://codeload.github.com/pcardune/test262-compiler/tar.gz/ffa0dff"
   dependencies:
