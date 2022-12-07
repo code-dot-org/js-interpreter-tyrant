@@ -60,7 +60,7 @@
     "compression": "^1.7.0",
     "eslint-plugin-react": "^7.3.0",
     "events": "^1.1.1",
-    "express": "^4.15.4",
+    "express": "^4.17.3",
     "heroku-client": "^3.0.3",
     "lodash.sortby": "^4.7.0",
     "lodash.throttle": "^4.1.1",
