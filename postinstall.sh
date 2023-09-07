@@ -1,3 +1,4 @@
+#!/bin/sh
 set -x
 cd packages/js-interpreter-portal
 yarn install --production=false
